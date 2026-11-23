@@ -584,6 +584,66 @@ fn pet_snap(session: f64, working: bool) -> Snapshot {
 }
 
 #[test]
+fn ninja_expanded() {
+    render(Case { name: "ninja-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
+}
+
+#[test]
+fn ninja_expanded_working() {
+    render(Case { name: "ninja-expanded-working", snap: pet_snap(42.0, true), mood: Mood::Working, view: View::default() });
+}
+
+#[test]
+fn ninja_compact_on_fire() {
+    render(Case { name: "ninja-compact-fire", snap: pet_snap(93.0, false), mood: Mood::Fire, view: compact_view() });
+}
+
+#[test]
+fn ninja_pet_only() {
+    render(Case { name: "ninja-pet-only", snap: pet_snap(42.0, false), mood: Mood::Idle, view: pet_only_view() });
+}
+
+#[test]
+fn pirate_expanded() {
+    render(Case { name: "pirate-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
+}
+
+#[test]
+fn pirate_expanded_working() {
+    render(Case { name: "pirate-expanded-working", snap: pet_snap(42.0, true), mood: Mood::Working, view: View::default() });
+}
+
+#[test]
+fn pirate_compact_on_fire() {
+    render(Case { name: "pirate-compact-fire", snap: pet_snap(93.0, false), mood: Mood::Fire, view: compact_view() });
+}
+
+#[test]
+fn pirate_pet_only() {
+    render(Case { name: "pirate-pet-only", snap: pet_snap(42.0, false), mood: Mood::Idle, view: pet_only_view() });
+}
+
+#[test]
+fn chef_expanded() {
+    render(Case { name: "chef-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
+}
+
+#[test]
+fn chef_expanded_working() {
+    render(Case { name: "chef-expanded-working", snap: pet_snap(42.0, true), mood: Mood::Working, view: View::default() });
+}
+
+#[test]
+fn chef_compact_on_fire() {
+    render(Case { name: "chef-compact-fire", snap: pet_snap(93.0, false), mood: Mood::Fire, view: compact_view() });
+}
+
+#[test]
+fn chef_pet_only() {
+    render(Case { name: "chef-pet-only", snap: pet_snap(42.0, false), mood: Mood::Idle, view: pet_only_view() });
+}
+
+#[test]
 fn wizard_expanded() {
     render(Case { name: "wizard-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
 }

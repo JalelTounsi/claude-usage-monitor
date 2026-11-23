@@ -79,6 +79,40 @@ pub const SKINS: &[Skin] = &[
         stand_box: [0.137, 0.133, 0.902, 0.867],
     },
     Skin {
+        id: "ninja",
+        name: "Ninja",
+        pack: "everyday",
+        working: include_bytes!("../../assets/ninja-working.png"),
+        moods: include_bytes!("../../assets/ninja-moods.png"),
+        // the sword on its back
+        work_box: [0.043, 0.074, 0.969, 0.934],
+        fire_box: [0.086, 0.062, 0.93, 0.816],
+        // the sword and the headband's tails stand with it
+        stand_box: [0.152, 0.078, 0.93, 0.797],
+    },
+    Skin {
+        id: "pirate",
+        name: "Pirate",
+        pack: "everyday",
+        working: include_bytes!("../../assets/pirate-working.png"),
+        moods: include_bytes!("../../assets/pirate-moods.png"),
+        work_box: [0.043, 0.117, 0.969, 0.934],
+        fire_box: [0.086, 0.062, 0.906, 0.816],
+        // the hat stands with it
+        stand_box: [0.176, 0.094, 0.848, 0.797],
+    },
+    Skin {
+        id: "chef",
+        name: "Chef",
+        pack: "everyday",
+        working: include_bytes!("../../assets/chef-working.png"),
+        moods: include_bytes!("../../assets/chef-moods.png"),
+        work_box: [0.043, 0.09, 0.969, 0.934],
+        fire_box: [0.062, 0.062, 0.906, 0.816],
+        // the toque and the spoon stand with it
+        stand_box: [0.062, 0.062, 0.848, 0.797],
+    },
+    Skin {
         id: "santa",
         name: "Santa",
         pack: "christmas",
