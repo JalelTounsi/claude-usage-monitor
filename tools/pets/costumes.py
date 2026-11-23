@@ -36,7 +36,19 @@ PALETTE = {
     "p": (140, 92, 50),
     "r": (206, 52, 52),  # headband
     "q": (160, 36, 40),
+    "m": (196, 204, 218),  # mirror, wrench
+    "M": (242, 246, 252),
+    "n": (176, 184, 198),
+    "N": (92, 98, 114),
+    "y": (246, 196, 40),  # hard hat
+    "Y": (255, 228, 112),
+    "h": (206, 150, 24),
+    "e": (24, 120, 90),  # helmet
+    "E": (244, 244, 244),
+    "f": (150, 150, 162),  # flag pole
 }
+
+HELMET = PALETTE["e"]
 
 TOQUE = [
     "..www..wwww..www..",
@@ -73,6 +85,57 @@ TRICORN = [
     "..kkkkkkWkWkkkjj..",
     "kggggggggggggggggk",
     ".kkkkkkkkkkkkkkjj.",
+]
+
+MIRROR = [
+    ".mmm.",
+    "mmMmm",
+    "mMMmm",
+    "mmmmm",
+    ".mmm.",
+]
+
+HARD_HAT = [
+    "......yyyyyy......",
+    "....yyyyYYyyyy....",
+    "...yyyyyYYyyyyy...",
+    "...yyyyyYYyyyyh...",
+    "...yyyyyYYyyyhh...",
+    "yyyyyyyyyyyyyyyyhh",
+]
+
+WRENCH = [
+    "n...n",
+    "n...n",
+    "nn.nn",
+    ".nnn.",
+    "..n..",
+    "..n..",
+    "..n..",
+    "..n..",
+    "..n..",
+    ".nNn.",
+    ".nnn.",
+]
+
+DOME = [
+    "...eeeeEEeeee...",
+    ".eeeeeeEEeeeeee.",
+    "eeeeeeeEEeeeeeee",
+]
+
+# flying away from the body, its pole on the right
+FLAG = [
+    "EjEjEjf",
+    "jEjEjEf",
+    "EjEjEjf",
+    "jEjEjEf",
+    "......f",
+    "......f",
+    "......f",
+    "......f",
+    "......f",
+    "......f",
 ]
 
 # the knot and its tails, in two poses so they flutter
@@ -124,12 +187,37 @@ def lift_zz(frame, kind, i, top, dx):
     """Take the sleeping row's zz out of a hat's way: cut here, put back `dx` to the right."""
     if kind != "moods" or not 4 <= i < 8:
         return None
-    box = (176, 0, FRAME - dx, top + 2)
-    px = np.array(frame.crop(box))
-    cream = (px[..., 0] > 190) & (px[..., 1] > 180) & (px[..., 2] > 140) & (px[..., 3] > 0)
-    zz = Image.fromarray(np.where(cream[..., None], px, 0).astype("uint8"), "RGBA")
-    frame.paste(Image.fromarray(np.where(cream[..., None], 0, px).astype("uint8"), "RGBA"), box)
-    return lambda: frame.alpha_composite(zz, (box[0] + dx, 0))
+    px = np.array(frame)
+    region = np.zeros((FRAME, FRAME), bool)
+    region[: top + 2, 176 : FRAME - dx] = True
+    cream = region & (px[..., 0] > 190) & (px[..., 1] > 180) & (px[..., 2] > 140) & (px[..., 3] > 0)
+    ys, xs = np.where(cream)
+    # the letters with their dark edge, but not the head's own outline under them
+    lift = np.zeros_like(cream)
+    lift[max(ys.min() - 3, 0) : ys.max() + 4, max(xs.min() - 3, 176) : min(xs.max() + 4, FRAME - dx)] = True
+    yy, xx = np.mgrid[0:FRAME, 0:FRAME]
+    lift &= cream | (yy < top - 7) | (xx > 198)
+    zz = Image.fromarray(np.where(lift[..., None], px, 0).astype("uint8"), "RGBA")
+    frame.paste(Image.fromarray(np.where(lift[..., None], 0, px).astype("uint8"), "RGBA"))
+    return lambda: frame.alpha_composite(zz, (dx, 0))
+
+
+def eye_slot(xs, ys, left, width, top):
+    return (ys >= top + 0.15 * width) & (ys <= top + 0.55 * width) & (xs >= left + 0.07 * width) & (xs <= left + 0.93 * width)
+
+
+def dye(frame, a, kind, left, width, top, rgb, where):
+    """Recolour the body where `where(xs, ys)` holds, keeping its own shading."""
+    px = np.array(frame).astype(float)
+    ys, xs = np.mgrid[0:FRAME, 0:FRAME]
+    # the body and its ears only: not the flames beside it, nor the desk under the hands
+    floor = top + (0.86 if kind == "working" else 1.0) * width
+    mask = body_mask(a, 32) & (xs > left - 19) & (xs < left + width + 19) & (ys >= top - 2) & (ys <= floor)
+    mask &= where(xs, ys)
+    lum = a[..., :3].astype(float).sum(-1) / (212 + 108 + 78)  # the original's, so dyes can overlap
+    for c, v in enumerate(rgb):
+        px[..., c] = np.where(mask, np.clip(v * lum, 0, 255), px[..., c])
+    frame.paste(Image.fromarray(px.astype("uint8"), "RGBA"))
 
 
 def chef(frame, a, kind, i, cell, cx, width, top):
@@ -177,19 +265,8 @@ def ninja(frame, a, kind, i, cell, cx, width, top):
     back.alpha_composite(frame)
     frame.paste(back)
 
-    # the suit: the body's own shading, in navy, but for a slot at the eyes
-    px = np.array(frame).astype(float)
-    mask = body_mask(a, 32)
-    ys, xs = np.mgrid[0:FRAME, 0:FRAME]
-    # the body and its ears only: not the flames beside it, nor the desk under the hands
-    floor = top + (0.86 if kind == "working" else 1.0) * width
-    mask &= (xs > left - 19) & (xs < left + width + 19) & (ys >= top - 2) & (ys <= floor)
-    slot = (ys >= top + 0.15 * width) & (ys <= top + 0.55 * width) & (xs >= left + 0.07 * width) & (xs <= left + 0.93 * width)
-    suit = mask & ~slot
-    lum = px[..., :3].sum(-1) / (212 + 108 + 78)
-    for c, v in enumerate((50, 56, 86)):
-        px[..., c] = np.where(suit, np.clip(v * lum, 0, 255), px[..., c])
-    frame.paste(Image.fromarray(px.astype("uint8"), "RGBA"))
+    # the suit, but for a slot at the eyes
+    dye(frame, a, kind, left, width, top, (50, 56, 86), lambda xs, ys: ~eye_slot(xs, ys, left, width, top))
 
     band = Image.new("RGBA", (int(width) + 8, int(1.25 * cell)), PALETTE["r"] + (255,))
     ImageDraw.Draw(band).rectangle([0, band.height - cell // 3, band.width, band.height], fill=PALETTE["q"] + (255,))
@@ -199,7 +276,51 @@ def ninja(frame, a, kind, i, cell, cx, width, top):
     paste(frame, tails, left + width + 6, by - 2)
 
 
-PETS = {"ninja": ninja, "pirate": pirate, "chef": chef}
+def doctor(frame, a, kind, i, cell, cx, width, top):
+    left = cx - width / 2
+    # the white coat, from under the eyes down
+    dye(frame, a, kind, left, width, top, (244, 244, 248), lambda xs, ys: ys > top + 0.6 * width)
+    if kind == "moods":
+        d = ImageDraw.Draw(frame)
+        tube, y0, y1 = (58, 62, 80, 255), top + 0.6 * width, top + 0.78 * width
+        d.line([left + 0.3 * width, y0, cx, y1], fill=tube, width=5)
+        d.line([left + 0.7 * width, y0, cx, y1], fill=tube, width=5)
+        d.ellipse([cx - 9, y1 - 5, cx + 9, y1 + 13], fill=OUTLINE)
+        d.ellipse([cx - 5, y1 - 1, cx + 5, y1 + 9], fill=PALETTE["m"] + (255,))
+        x, y, u = left + 0.14 * width, top + 0.66 * width, 4  # a red cross on the coat
+        d.rectangle([x + u, y, x + 2 * u - 1, y + 3 * u - 1], fill=PALETTE["r"] + (255,))
+        d.rectangle([x, y + u, x + 3 * u - 1, y + 2 * u - 1], fill=PALETTE["r"] + (255,))
+    # the head mirror on its strap
+    strap = Image.new("RGBA", (int(width) + 8, cell), (84, 90, 108, 255))
+    paste(frame, strap, left - 4, top + 0.15 * width - cell - 4)
+    mirror = grid_layer(MIRROR, cell - 2)
+    paste(frame, mirror, cx - mirror.width / 2, top + 0.15 * width - cell - mirror.height + 6)
+
+
+def engineer(frame, a, kind, i, cell, cx, width, top):
+    zz = lift_zz(frame, kind, i, top, 22)
+    hat = grid_layer(HARD_HAT, cell)
+    paste(frame, hat, cx - hat.width / 2, top + 8 - hat.height)
+    if kind == "moods":
+        wrench = grid_layer(WRENCH, 5)
+        paste(frame, wrench, cx - width / 2 - 49, top + 30)
+    if zz:
+        zz()
+
+
+def driver(frame, a, kind, i, cell, cx, width, top):
+    left = cx - width / 2
+    # the helmet and the suit, open at the eyes, with a stripe over the top
+    dye(frame, a, kind, left, width, top, HELMET, lambda xs, ys: ~eye_slot(xs, ys, left, width, top))
+    dye(frame, a, kind, left, width, top, (244, 244, 244), lambda xs, ys: (abs(xs - cx) < cell) & (ys < top + 0.15 * width))
+    dome = grid_layer(DOME, cell)
+    paste(frame, dome, cx - dome.width / 2, top + 6 - dome.height)
+    if kind == "moods":
+        flag = grid_layer(FLAG, 5)
+        paste(frame, flag, left - 26 - flag.width, top + 6)
+
+
+PETS = {"ninja": ninja, "pirate": pirate, "chef": chef, "doctor": doctor, "engineer": engineer, "driver": driver}
 
 
 def bbox(frames):

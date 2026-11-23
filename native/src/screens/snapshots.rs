@@ -644,6 +644,66 @@ fn chef_pet_only() {
 }
 
 #[test]
+fn doctor_expanded() {
+    render(Case { name: "doctor-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
+}
+
+#[test]
+fn doctor_expanded_working() {
+    render(Case { name: "doctor-expanded-working", snap: pet_snap(42.0, true), mood: Mood::Working, view: View::default() });
+}
+
+#[test]
+fn doctor_compact_on_fire() {
+    render(Case { name: "doctor-compact-fire", snap: pet_snap(93.0, false), mood: Mood::Fire, view: compact_view() });
+}
+
+#[test]
+fn doctor_pet_only() {
+    render(Case { name: "doctor-pet-only", snap: pet_snap(42.0, false), mood: Mood::Idle, view: pet_only_view() });
+}
+
+#[test]
+fn engineer_expanded() {
+    render(Case { name: "engineer-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
+}
+
+#[test]
+fn engineer_expanded_working() {
+    render(Case { name: "engineer-expanded-working", snap: pet_snap(42.0, true), mood: Mood::Working, view: View::default() });
+}
+
+#[test]
+fn engineer_compact_on_fire() {
+    render(Case { name: "engineer-compact-fire", snap: pet_snap(93.0, false), mood: Mood::Fire, view: compact_view() });
+}
+
+#[test]
+fn engineer_pet_only() {
+    render(Case { name: "engineer-pet-only", snap: pet_snap(42.0, false), mood: Mood::Idle, view: pet_only_view() });
+}
+
+#[test]
+fn driver_expanded() {
+    render(Case { name: "driver-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
+}
+
+#[test]
+fn driver_expanded_working() {
+    render(Case { name: "driver-expanded-working", snap: pet_snap(42.0, true), mood: Mood::Working, view: View::default() });
+}
+
+#[test]
+fn driver_compact_on_fire() {
+    render(Case { name: "driver-compact-fire", snap: pet_snap(93.0, false), mood: Mood::Fire, view: compact_view() });
+}
+
+#[test]
+fn driver_pet_only() {
+    render(Case { name: "driver-pet-only", snap: pet_snap(42.0, false), mood: Mood::Idle, view: pet_only_view() });
+}
+
+#[test]
 fn wizard_expanded() {
     render(Case { name: "wizard-expanded", snap: pet_snap(42.0, false), mood: Mood::Idle, view: View::default() });
 }

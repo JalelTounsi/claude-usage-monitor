@@ -113,6 +113,39 @@ pub const SKINS: &[Skin] = &[
         stand_box: [0.062, 0.062, 0.848, 0.797],
     },
     Skin {
+        id: "doctor",
+        name: "Doctor",
+        pack: "everyday",
+        working: include_bytes!("../../assets/doctor-working.png"),
+        moods: include_bytes!("../../assets/doctor-moods.png"),
+        work_box: [0.043, 0.203, 0.969, 0.934],
+        fire_box: [0.086, 0.062, 0.906, 0.816],
+        // the head mirror stands with it
+        stand_box: [0.176, 0.234, 0.848, 0.797],
+    },
+    Skin {
+        id: "engineer",
+        name: "Engineer",
+        pack: "everyday",
+        working: include_bytes!("../../assets/engineer-working.png"),
+        moods: include_bytes!("../../assets/engineer-moods.png"),
+        work_box: [0.043, 0.152, 0.969, 0.934],
+        fire_box: [0.062, 0.062, 0.906, 0.816],
+        // the hard hat and the wrench stand with it
+        stand_box: [0.062, 0.133, 0.848, 0.797],
+    },
+    Skin {
+        id: "driver",
+        name: "Racing driver",
+        pack: "everyday",
+        working: include_bytes!("../../assets/driver-working.png"),
+        moods: include_bytes!("../../assets/driver-moods.png"),
+        work_box: [0.043, 0.203, 0.969, 0.934],
+        fire_box: [0.016, 0.062, 0.906, 0.816],
+        // the helmet and the flag stand with it
+        stand_box: [0.016, 0.219, 0.848, 0.797],
+    },
+    Skin {
         id: "santa",
         name: "Santa",
         pack: "christmas",

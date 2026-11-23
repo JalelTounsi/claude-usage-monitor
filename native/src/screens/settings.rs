@@ -71,7 +71,11 @@ fn pane_h(tab: Tab, snap: &Snapshot, view: &super::View) -> f32 {
 
 /// Window size for Settings on `tab`.
 pub fn size(snap: &Snapshot, tab: Tab, view: &super::View) -> [f32; 2] {
-    let h = BODY_TOP + 12.0 + TABS_H + pane_h(tab, snap, view) + ACTIONS_H + PAD_BOTTOM;
+    let mut h = BODY_TOP + 12.0 + TABS_H + pane_h(tab, snap, view) + ACTIONS_H + PAD_BOTTOM;
+    if tab == Tab::Appearance && view.pet_picker {
+        // the card grows while the picker is open, so every pet fits
+        h = h.max(modal_h() + 2.0 * MODAL_MARGIN);
+    }
     [CARD_W + 2.0 * MARGIN, h + 2.0 * MARGIN]
 }
 
@@ -362,6 +366,13 @@ const TILE_GAP: f32 = 6.0;
 const PER_ROW: usize = 3;
 const MODAL_PAD: f32 = 12.0;
 const MODAL_HEAD: f32 = 36.0;
+/// between the picker's panel and the card's edge
+const MODAL_MARGIN: f32 = 10.0;
+
+fn modal_h() -> f32 {
+    let rows = skins::SKINS.len().div_ceil(PER_ROW) as f32;
+    MODAL_HEAD + rows * TILE.y + (rows - 1.0) * TILE_GAP + MODAL_PAD
+}
 
 // every pet, a tile each: its idle pose and its name; the chosen one lit
 fn picker(ui: &Ui, f: &Frame, left: f32, right: f32, y: f32, chosen: &str) -> Option<&'static str> {
@@ -398,9 +409,7 @@ fn pet_modal(ui: &Ui, ctx: &Context, f: &Frame, area: Rect, draft: &Prefs, actio
     // the scrim swallows clicks meant for what's under it
     let _ = click_area(ui, area, "pet-modal-scrim");
 
-    let rows = skins::SKINS.len().div_ceil(PER_ROW) as f32;
-    let h = MODAL_HEAD + rows * TILE.y + (rows - 1.0) * TILE_GAP + MODAL_PAD;
-    let panel = Rect::from_center_size(area.center(), Vec2::new(area.width() - 2.0 * 10.0, h));
+    let panel = Rect::from_center_size(area.center(), Vec2::new(area.width() - 2.0 * MODAL_MARGIN, modal_h()));
     p.rect(panel, CornerRadius::same(radius::CARD), color::SETTINGS, Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
     let _ = click_area(ui, panel, "pet-modal");
     let (left, right) = (panel.left() + MODAL_PAD, panel.right() - MODAL_PAD);
@@ -478,6 +487,9 @@ mod tests {
         let view = crate::screens::View::default();
         let h = |t| size(&snap, t, &view)[1];
         assert!(h(Tab::Appearance) > h(Tab::Alerts));
+        // with the picker open, the card is tall enough for every pet
+        let open = crate::screens::View { pet_picker: true, ..crate::screens::View::default() };
+        assert!(size(&snap, Tab::Appearance, &open)[1] >= modal_h() + 2.0 * MODAL_MARGIN + 2.0 * MARGIN);
         let logging = Snapshot { login: Login::AwaitingCode, ..Default::default() };
         assert!(size(&logging, Tab::Accounts, &view)[1] > h(Tab::Accounts));
     }
