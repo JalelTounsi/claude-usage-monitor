@@ -37,6 +37,6 @@ On a pack's days, one of its pets takes over ([ADR-009](../decisions/ADR-009-hol
 
 1. Generate both sheets from `native/assets/working-sheet.png` and `native/assets/moods-sheet.png` as the reference: the same frames, the same character size and position, on a flat background. The art is generated (Codex `gpt-6-astra`), and Clauddy stays square and blocky.
 2. Clear the background, resize to 1024 × 512 and 1024 × 1024, and measure the art's box in each row.
-   A simpler pet can instead be composited onto the classic sheets: `python3 tools/pets/costumes.py` draws those costumes (Ninja, Pirate, Chef, Doctor, Engineer, Racing driver) on every frame, writes their sheets and prints their boxes.
+   A simpler pet can instead be composited onto the classic sheets: `python3 tools/pets/costumes.py` draws those costumes (Ninja, Pirate, Chef, Doctor, Engineer, Racing driver) on every frame, writes their sheets and prints their boxes. A costume can start from another pet's sheet than the classic one: the Racing driver's desk scene is the Getaway's drive, repainted as a race car.
 3. Add the sheets to `native/assets/` and a `Skin` to `SKINS`, with its pack. A new pack goes in `PACKS`, with `days` if it takes over on holidays.
 4. Add snapshot cases named after the pet (`<id>-expanded`, `<id>-compact-fire`, ...) in `native/src/screens/snapshots.rs`, and check the PNGs: a test checks that every sheet has its grid's size.

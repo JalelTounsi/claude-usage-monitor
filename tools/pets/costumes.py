@@ -43,9 +43,10 @@ PALETTE = {
     "y": (246, 196, 40),  # hard hat
     "Y": (255, 228, 112),
     "h": (206, 150, 24),
-    "e": (24, 120, 90),  # helmet
+    "e": (204, 36, 44),  # helmet
     "E": (244, 244, 244),
     "f": (150, 150, 162),  # flag pole
+    "u": (40, 84, 176),  # overalls
     "x": (96, 100, 128),  # sword grip
     "X": (52, 54, 76),
 }
@@ -237,14 +238,16 @@ def eye_slot(xs, ys, left, width, top):
     return (ys >= top + 0.15 * width) & (ys <= top + 0.55 * width) & (xs >= left + 0.07 * width) & (xs <= left + 0.93 * width)
 
 
-def dye(frame, a, kind, left, width, top, rgb, where):
-    """Recolour the body where `where(xs, ys)` holds, keeping its own shading."""
+def dye(frame, a, kind, left, width, top, rgb, where, wide=False):
+    """Recolour the body where `where(xs, ys)` holds, keeping its own shading.
+    `wide` reaches past the body's own box, to hands and arms wherever they are."""
     px = np.array(frame).astype(float)
     ys, xs = np.mgrid[0:FRAME, 0:FRAME]
     # the body and its ears only: not the flames beside it, nor the desk under the hands
     floor = top + (0.86 if kind == "working" else 1.0) * width
-    mask = body_mask(a, 32) & (xs > left - 19) & (xs < left + width + 19) & (ys >= top - 2) & (ys <= floor)
-    mask &= where(xs, ys)
+    mask = body_mask(a, 32) & where(xs, ys)
+    if not wide:
+        mask &= (xs > left - 19) & (xs < left + width + 19) & (ys >= top - 2) & (ys <= floor)
     lum = a[..., :3].astype(float).sum(-1) / (212 + 108 + 78)  # the original's, so dyes can overlap
     for c, v in enumerate(rgb):
         px[..., c] = np.where(mask, np.clip(v * lum, 0, 255), px[..., c])
@@ -367,20 +370,91 @@ def doctor(frame, a, kind, i, cell, cx, width, top):
     paste(frame, mirror, cx - mirror.width / 2 + 2 * sway(kind, i)[0], top + 0.15 * width - cell - mirror.height + 6)
 
 
+SUIT = (40, 84, 176)  # the overalls
+TRIM = (246, 244, 244)
+GLOVE = (58, 60, 76)
+PATCH = (246, 196, 40)
+ARM = ["uuu", "uuu", "jjj", "jjj"]
+
+
+def repaint(frame, pick, paint):
+    """Recolour the pixels `pick(h, s, v, xs, ys)` chooses with `paint(h, s, v)`, in HSV."""
+    hsv = np.array(frame.convert("RGB").convert("HSV")).astype(float) / 255
+    h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    ys, xs = np.mgrid[0:FRAME, 0:FRAME]
+    chosen = pick(h, s, v, xs, ys)
+    nh, ns, nv = paint(h, s, v)
+    out = np.stack([np.where(chosen, n, o) for n, o in ((nh, h), (ns, s), (nv, v))], -1)
+    rgb = Image.fromarray((out * 255).astype("uint8"), "HSV").convert("RGB")
+    rgb.putalpha(frame.getchannel("A"))
+    frame.paste(rgb)
+
+
+def race_car(frame, a):
+    """The getaway's drive, as a race: no shades, no palm tree, the car in racing red."""
+    px = np.array(frame)
+    ys, xs = np.mgrid[0:FRAME, 0:FRAME]
+    # the shades above the head, and the palm tree behind the car
+    gone = ((ys < 77) & (xs < 166)) | ((xs >= 184) & (ys < 143)) | ((xs >= 166) & (ys < 78))
+    # and the fronds that reach the ear: whatever is not the body or its outline there
+    near = np.array(Image.fromarray((body_mask(a, 32) * 255).astype("uint8")).filter(ImageFilter.MaxFilter(11))) > 0
+    gone |= (xs >= 164) & (ys < 110) & ~near
+    px[gone] = 0
+    frame.paste(Image.fromarray(px, "RGBA"))
+    pink = lambda h, s, v, xs, ys: (h > 0.8) & (s > 0.12)
+    # the jacket, every pink of it, becomes the blue overalls; the car's paint goes red
+    # (under the head, and the sleeve raised beside it in the cheer; not the blush or the mouth)
+    jacket = lambda xs, ys: (xs >= 36) & (xs <= 172) & (ys <= 171) & ((ys >= 137) & (xs >= 52) | (ys >= 100) & (ys < 148) & (xs < 66))
+    repaint(frame, lambda h, s, v, xs, ys: pink(h, s, v, xs, ys) & jacket(xs, ys), lambda h, s, v: (h * 0 + 0.613, s * 0 + 0.77, v * 0.72))
+    repaint(frame, lambda h, s, v, xs, ys: pink(h, s, v, xs, ys) & ~jacket(xs, ys) & (s >= 0.4), lambda h, s, v: (h * 0 + 0.99, s, v))
+    # its chest, over the jacket's lapels and chain: a collar, a zip, a stripe and a patch
+    d = ImageDraw.Draw(frame)
+    d.rectangle([98, 143, 132, 167], fill=SUIT + (255,))
+    d.rectangle([98, 154, 132, 158], fill=TRIM + (255,))
+    d.rectangle([100, 143, 130, 147], fill=HELMET + (255,))
+    d.rectangle([114, 148, 116, 167], fill=OUTLINE)
+    d.rectangle([103, 161, 109, 165], fill=PATCH + (255,))
+    # the stripe down its side, from cyan to white
+    repaint(frame, lambda h, s, v, xs, ys: (abs(h - 0.5) < 0.08) & (s > 0.5) & (ys > 170), lambda h, s, v: (h, s * 0, v * 0 + 0.96))
+
+
 def driver(frame, a, kind, i, cell, cx, width, top):
     left = cx - width / 2
-    # the helmet and the suit, open at the eyes, with a stripe over the top
-    dye(frame, a, kind, left, width, top, HELMET, lambda xs, ys: ~eye_slot(xs, ys, left, width, top))
-    dye(frame, a, kind, left, width, top, (244, 244, 244), lambda xs, ys: (abs(xs - cx) < cell) & (ys < top + 0.15 * width))
+    if kind == "working":
+        race_car(frame, a)
+        pole = grid_layer([row[::-1] for row in FLAG[:4]] + ["f"] * 15, 5)
+        behind(frame, lambda back: paste(back, pole, 204, 52))
+        d = ImageDraw.Draw(frame)  # the head's top, where the shades sat
+        d.rectangle([left + 2, top - 2, left + width - 2, top + 0.15 * width], fill=HELMET + (255,))
+    # the helmet, open at the eyes, with a stripe over the top
+    ys, xs = np.mgrid[0:FRAME, 0:FRAME]
+    head = (ys < top + 0.62 * width) & (xs > left - 19) & (xs < left + width + 19)
+    if kind == "working" and i == 6:  # the cheer: the hand raised by the ear is a glove
+        head &= ~((xs < left + 2) & (ys > top + 27))
+    dye(frame, a, kind, left, width, top, HELMET, lambda xs, ys: head & ~eye_slot(xs, ys, left, width, top))
+    if kind == "working":
+        # at the wheel, what shows of the body are the hands
+        dye(frame, a, kind, left, width, top, GLOVE, lambda xs, ys: ~head, wide=True)
+    else:
+        # the overalls: a white stripe across the chest, boots, and arms in gloves at the sides
+        dye(frame, a, kind, left, width, top, SUIT, lambda xs, ys: ~head)
+        dye(frame, a, kind, left, width, top, TRIM, lambda xs, ys: (ys > top + 0.66 * width) & (ys < top + 0.71 * width))
+        dye(frame, a, kind, left, width, top, GLOVE, lambda xs, ys: ys > top + 0.89 * width)
+        arm = grid_layer(ARM, 4)
+        for x in (left - arm.width + 2, left + width - 2):
+            paste(frame, arm, x, top + 0.62 * width)
+        d = ImageDraw.Draw(frame)
+        d.rectangle([left + 10, top + 0.63 * width, left + 16, top + 0.66 * width - 1], fill=PATCH + (255,))
+    d = ImageDraw.Draw(frame)
+    d.rectangle([cx - cell, top - 2, cx + cell - 1, top + 0.15 * width - 4], fill=TRIM + (255,))
+    x0, y0, x1, y1 = (int(v) for v in (left + 0.07 * width, top + 0.15 * width, left + 0.93 * width, top + 0.55 * width))
+    d.rectangle([x0 - 4, y0 - 4, x1 + 4, y1 + 4], outline=OUTLINE, width=4)
     dome = grid_layer(DOME, cell)
     paste(frame, dome, cx - dome.width / 2, top + 6 - dome.height)
-    flag = grid_layer(FLAG, 5)
     if kind == "moods":
-        paste(frame, flag, left - 24 - flag.width, top + 6)
-    else:
-        behind(frame, lambda back: paste(back, flag, DESK_PROP[0] - 4, DESK_PROP[1]))
+        flag = grid_layer(FLAG + ["....f"] * 6, 5)  # its pole down to the glove
+        paste(frame, flag, left - 15 - flag.width, top + 4)
     if row_of(kind, i) == "fire":  # visor down, with a glint
-        x0, y0, x1, y1 = (int(v) for v in (left + 0.07 * width, top + 0.15 * width, left + 0.93 * width, top + 0.55 * width))
         visor = Image.new("RGBA", frame.size, (0, 0, 0, 0))
         d = ImageDraw.Draw(visor)
         d.rectangle([x0, y0, x1, y1], fill=(28, 34, 58, 150))
@@ -388,6 +462,9 @@ def driver(frame, a, kind, i, cell, cx, width, top):
         d.rectangle([x0 + 8, y0 + 10, x0 + 11, y0 + 17], fill=(210, 226, 255, 200))
         frame.alpha_composite(visor)
 
+
+# a pet whose sheet starts from another pet's than the classic one: (file, head top)
+BASES = {("driver", "working"): ("getaway-working.png", 77)}
 
 PETS = {"ninja": ninja, "pirate": pirate, "chef": chef, "doctor": doctor, "engineer": engineer, "driver": driver}
 
@@ -403,6 +480,7 @@ def bbox(frames):
 def build(pet, draw):
     boxes = {}
     for kind, (name, cols, rows, cell, cx, width) in SHEETS.items():
+        name, fixed_top = BASES.get((pet, kind), (name, None))
         src = Image.open(ASSETS / name).convert("RGBA")
         out = Image.new("RGBA", src.size, (0, 0, 0, 0))
         frames = []
@@ -410,7 +488,7 @@ def build(pet, draw):
             x, y = (i % cols) * FRAME, (i // cols) * FRAME
             frame = src.crop((x, y, x + FRAME, y + FRAME))
             a = np.array(frame)
-            draw(frame, a, kind, i, cell, cx, width, head_top(a))
+            draw(frame, a, kind, i, cell, cx, width, fixed_top or head_top(a))
             out.paste(frame, (x, y))
             frames.append(frame)
         out.save(ASSETS / f"{pet}-{kind}.png", optimize=True)

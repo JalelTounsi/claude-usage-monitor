@@ -139,8 +139,9 @@ pub const SKINS: &[Skin] = &[
         pack: "everyday",
         working: include_bytes!("../../assets/driver-working.png"),
         moods: include_bytes!("../../assets/driver-moods.png"),
-        work_box: [0.043, 0.203, 0.969, 0.934],
-        fire_box: [0.062, 0.062, 0.906, 0.816],
+        // the race car and its flag
+        work_box: [0.031, 0.188, 0.973, 0.934],
+        fire_box: [0.086, 0.062, 0.906, 0.816],
         // the helmet stands with it; the flag hangs outside
         stand_box: [0.176, 0.219, 0.848, 0.797],
     },
