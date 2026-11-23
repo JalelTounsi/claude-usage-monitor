@@ -267,7 +267,7 @@ fn window_now(w: Option<&RawWindow>, now: i64) -> Option<Window> {
 
 fn ranked(map: HashMap<String, u64>, order: &[String]) -> Vec<Labeled> {
     // first-seen order breaks ties, as a JS Map does
-    let mut rows: Vec<Labeled> = order.iter().filter_map(|k| map.get(k).map(|&t| Labeled { label: k.clone(), tokens: t })).collect();
+    let mut rows: Vec<Labeled> = order.iter().filter_map(|k| map.get(k).map(|&t| Labeled::new(k.clone(), t))).collect();
     rows.sort_by_key(|r| std::cmp::Reverse(r.tokens));
     rows
 }
@@ -490,7 +490,7 @@ impl Codex {
         let mut by_project: Vec<Labeled> = projects.iter().take(TOP_PROJECTS).cloned().collect();
         let rest = &projects[projects.len().min(TOP_PROJECTS)..];
         if !rest.is_empty() {
-            by_project.push(Labeled { label: format!("other · {}", rest.len()), tokens: rest.iter().map(|p| p.tokens).sum() });
+            by_project.push(Labeled::new(format!("other · {}", rest.len()), rest.iter().map(|p| p.tokens).sum()));
         }
         let weekly_only = limits.as_ref().is_some_and(|l| l.weekly.is_some() && l.session.is_none());
         Some(CodexUsage {

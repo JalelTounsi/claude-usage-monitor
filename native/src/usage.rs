@@ -53,6 +53,8 @@ pub fn plan_budget(plan: &str) -> Option<(f64, f64)> {
 #[serde(rename_all = "camelCase")]
 pub struct Session {
     pub tokens: u64,
+    /// what those tokens cost on the API, in USD
+    pub cost: f64,
     pub pct: f64,
     pub reset_ms: i64,
     pub active: bool,
@@ -62,6 +64,7 @@ pub struct Session {
 #[serde(rename_all = "camelCase")]
 pub struct Week {
     pub tokens: u64,
+    pub cost: f64,
     pub pct: f64,
     pub reset_ms: Option<i64>,
 }
@@ -70,6 +73,14 @@ pub struct Week {
 pub struct Labeled {
     pub label: String,
     pub tokens: u64,
+    /// what those tokens cost on the API, in USD (0 where there's no price)
+    pub cost: f64,
+}
+
+impl Labeled {
+    pub fn new(label: impl Into<String>, tokens: u64) -> Self {
+        Labeled { label: label.into(), tokens, cost: 0.0 }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -78,6 +89,9 @@ pub struct Usage {
     pub session: Session,
     pub week: Week,
     pub today_tokens: u64,
+    /// today's, the 30 days' tokens at API prices, in USD
+    pub today_cost: f64,
+    pub month_cost: f64,
     pub by_model: Vec<Labeled>,
     pub by_project: Vec<Labeled>,
     pub days30: Vec<u64>,
@@ -99,6 +113,8 @@ impl Usage {
             session: Session::default(),
             week: Week::default(),
             today_tokens: 0,
+            today_cost: 0.0,
+            month_cost: 0.0,
             by_model: vec![],
             by_project: vec![],
             days30: vec![0; DAYS],
@@ -118,6 +134,8 @@ struct Entry {
     ts: i64,
     model: Option<String>,
     tokens: u64,
+    /// at the model's API prices, in USD
+    cost: f64,
     key: String,
 }
 
@@ -280,10 +298,11 @@ impl Reader {
 
         let mut seen = HashSet::new();
         let (mut today, mut week, mut month, mut last5m) = (0u64, 0u64, 0u64, 0u64);
+        let (mut today_cost, mut week_cost, mut month_cost) = (0f64, 0f64, 0f64);
         let mut by_model = Tally::default();
         let mut by_project = Tally::default();
         let mut days30 = vec![0u64; DAYS];
-        let mut recent: Vec<(i64, u64)> = Vec::new();
+        let mut recent: Vec<(i64, u64, f64)> = Vec::new();
 
         for f in &files {
             let (fs_root, projects_dir) = &roots[f.root];
@@ -298,20 +317,23 @@ impl Reader {
                 }
                 let t = e.tokens;
                 month += t;
+                month_cost += e.cost;
                 let idx = ((e.ts - start30) / DAY_MS).clamp(0, DAYS as i64 - 1) as usize;
                 days30[idx] += t;
                 if e.ts >= week_start {
                     week += t;
-                    by_model.add(label_for(e.model.as_deref()), t);
+                    week_cost += e.cost;
+                    by_model.add(label_for(e.model.as_deref()), t, e.cost);
                     if let Some(p) = &proj {
-                        by_project.add(p.clone(), t);
+                        by_project.add(p.clone(), t, e.cost);
                     }
                 }
                 if e.ts >= today_ms {
                     today += t;
+                    today_cost += e.cost;
                 }
                 if e.ts >= recent_cutoff {
-                    recent.push((e.ts, t));
+                    recent.push((e.ts, t, e.cost));
                 }
                 if e.ts >= five_min_ago {
                     last5m += t;
@@ -323,7 +345,7 @@ impl Reader {
         // the first turn after the previous one expired
         recent.sort_by_key(|e| e.0);
         let mut window: Option<(i64, i64)> = None;
-        for &(ts, _) in &recent {
+        for &(ts, ..) in &recent {
             if window.is_none_or(|(_, end)| ts >= end) {
                 window = Some((ts, ts + SESSION_MS));
             }
@@ -336,8 +358,9 @@ impl Reader {
 
         let mut session = Session::default();
         if let Some((start, end)) = window.filter(|&(_, end)| now < end) {
-            let tk = recent.iter().filter(|e| e.0 >= start && e.0 < end).map(|e| e.1).sum();
-            session = Session { tokens: tk, pct: pct(tk, session_budget), reset_ms: end - now, active: true };
+            let inside = || recent.iter().filter(|e| e.0 >= start && e.0 < end);
+            let tk = inside().map(|e| e.1).sum();
+            session = Session { tokens: tk, cost: inside().map(|e| e.2).sum(), pct: pct(tk, session_budget), reset_ms: end - now, active: true };
         }
 
         let last_activity_ms = (last_mtime > 0).then(|| now - last_mtime);
@@ -372,13 +395,19 @@ impl Reader {
         let mut by_project: Vec<Labeled> = ranked.iter().take(TOP_PROJECTS).cloned().collect();
         let rest = &ranked[ranked.len().min(TOP_PROJECTS)..];
         if !rest.is_empty() {
-            by_project.push(Labeled { label: format!("other · {}", rest.len()), tokens: rest.iter().map(|p| p.tokens).sum() });
+            by_project.push(Labeled {
+                label: format!("other · {}", rest.len()),
+                tokens: rest.iter().map(|p| p.tokens).sum(),
+                cost: rest.iter().map(|p| p.cost).sum(),
+            });
         }
 
         Usage {
             session,
-            week: Week { tokens: week, pct: pct(week, weekly_budget), reset_ms: week_reset_ms },
+            week: Week { tokens: week, cost: week_cost, pct: pct(week, weekly_budget), reset_ms: week_reset_ms },
             today_tokens: today,
+            today_cost,
+            month_cost,
             by_model: by_model.ranked(),
             by_project,
             days30,
@@ -401,12 +430,15 @@ struct Tally {
 }
 
 impl Tally {
-    fn add(&mut self, label: String, tokens: u64) {
+    fn add(&mut self, label: String, tokens: u64, cost: f64) {
         match self.index.get(&label) {
-            Some(&i) => self.rows[i].tokens += tokens,
+            Some(&i) => {
+                self.rows[i].tokens += tokens;
+                self.rows[i].cost += cost;
+            }
             None => {
                 self.index.insert(label.clone(), self.rows.len());
-                self.rows.push(Labeled { label, tokens });
+                self.rows.push(Labeled { label, tokens, cost });
             }
         }
     }
@@ -547,16 +579,49 @@ fn resolve_project_path(fs_root: &Path, dir_name: &str) -> (Option<PathBuf>, Opt
     (rest.is_empty().then_some(cur), consumed)
 }
 
-/// The readable name for a project directory: its basename when the path
-/// still exists, otherwise the raw tail. A wrong name is worse than an ugly one.
+// where Claude Code keeps the worktrees it makes, inside the project, as the
+// directory name spells it (`/.claude/worktrees/` flattened)
+const WORKTREES: &str = "--claude-worktrees-";
+
+/// The project a working directory belongs to: the repository it is in, so a
+/// session started in a subdirectory or in a worktree counts for its project
+/// instead of standing as one of its own. A git worktree's `.git` is a file
+/// pointing into the main repository; a directory in no repository is its
+/// own project.
+fn project_root(dir: &Path) -> PathBuf {
+    let home = std::env::home_dir();
+    for at in dir.ancestors() {
+        // a home kept in git (dotfiles) isn't the project of all under it
+        if at != dir && home.as_deref() == Some(at) {
+            break;
+        }
+        let git = at.join(".git");
+        let Ok(meta) = fs::metadata(&git) else { continue };
+        if meta.is_file()
+            && let Ok(body) = fs::read_to_string(&git)
+            && let Some(main) = body.trim().strip_prefix("gitdir:").and_then(|p| p.trim().split_once("/.git/worktrees/"))
+        {
+            return PathBuf::from(main.0);
+        }
+        return at.to_path_buf();
+    }
+    dir.to_path_buf()
+}
+
+/// The readable name for a project directory: the name of the project its
+/// path is in when the path still exists, otherwise the raw tail. A wrong
+/// name is worse than an ugly one.
 fn project_label(cache: &mut HashMap<String, String>, fs_root: &Path, dir_name: &str) -> String {
     // the same name can stand for different paths in this machine and in WSL
     let key = format!("{}|{dir_name}", fs_root.display());
     if let Some(hit) = cache.get(&key) {
         return hit.clone();
     }
+    // a worktree Claude Code made is under its project, and is often gone
+    // by now: what comes before it is the project's own directory
+    let dir_name = dir_name.split_once(WORKTREES).map_or(dir_name, |(project, _)| project);
     let (full, consumed) = resolve_project_path(fs_root, dir_name);
-    let label = match full {
+    let label = match full.map(|p| project_root(&p)) {
         Some(p) => p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| p.to_string_lossy().into_owned()),
         None => {
             let raw = consumed.as_deref().unwrap_or(dir_name).trim_start_matches('-');
@@ -688,6 +753,14 @@ struct RawUsage {
     output_tokens: Option<u64>,
     cache_read_input_tokens: Option<u64>,
     cache_creation_input_tokens: Option<u64>,
+    cache_creation: Option<RawCacheCreation>,
+}
+
+// cache writes by how long they are kept: an hour costs more than 5 minutes
+#[derive(Deserialize)]
+struct RawCacheCreation {
+    ephemeral_5m_input_tokens: Option<u64>,
+    ephemeral_1h_input_tokens: Option<u64>,
 }
 
 fn nonempty<'a>(s: &'a Option<Cow<'a, str>>) -> Option<&'a str> {
@@ -719,8 +792,20 @@ fn ingest_line(entries: &mut Vec<Entry>, line: &[u8]) {
         return;
     }
     let tokens = [u.input_tokens, u.output_tokens, u.cache_read_input_tokens, u.cache_creation_input_tokens].iter().map(|t| t.unwrap_or(0)).sum();
+    // writes with no split are the default, 5 minutes
+    let written = u.cache_creation_input_tokens.unwrap_or(0);
+    let write_1h = u.cache_creation.as_ref().and_then(|c| c.ephemeral_1h_input_tokens).unwrap_or(0).min(written);
+    let write_5m = u.cache_creation.as_ref().and_then(|c| c.ephemeral_5m_input_tokens).unwrap_or(written - write_1h).min(written - write_1h);
+    let billed = crate::pricing::Tokens {
+        input: u.input_tokens.unwrap_or(0),
+        output: u.output_tokens.unwrap_or(0),
+        cache_read: u.cache_read_input_tokens.unwrap_or(0),
+        write_5m,
+        write_1h,
+    };
+    let cost = crate::pricing::cost(model, &billed);
     let req = nonempty(&obj.request_id).or_else(|| nonempty(&obj.uuid)).unwrap_or("");
-    entries.push(Entry { ts, model: model.map(str::to_string), tokens, key: format!("{}:{}", nonempty(&msg.id).unwrap_or(""), req) });
+    entries.push(Entry { ts, model: model.map(str::to_string), tokens, cost, key: format!("{}:{}", nonempty(&msg.id).unwrap_or(""), req) });
 }
 
 // Session logs only grow, and a long one passes 500 MB: a poll reads just the

@@ -28,10 +28,15 @@ pub(super) fn usage(active: bool, activity: Option<&str>) -> Usage {
     u.session.tokens = 5_200_000;
     u.week.tokens = 1_120_000_000;
     u.month_tokens = 8_070_000_000;
-    let l = |label: &str, tokens: u64| Labeled { label: label.into(), tokens };
+    let l = |label: &str, tokens: u64| Labeled::new(label, tokens);
     u.by_model = vec![l("Opus 5", 915_500_000), l("Fable 5.1", 200_400_000)];
     u.by_project = vec![l("clauddy", 577_800_000), l("personal-site", 366_200_000), l("little-experiments", 70_100_000)];
     u.days30 = (0..30u64).map(|i| (i * 37 % 11) * 40_000_000).collect();
+    // what those tokens are worth at API prices
+    (u.today_cost, u.session.cost, u.week.cost, u.month_cost) = (61.4, 8.45, 1_871.0, 13_480.0);
+    for (row, cost) in u.by_model.iter_mut().zip([1_210.0, 661.0]).chain(u.by_project.iter_mut().zip([402.5, 1_390.0, 78.5])) {
+        row.cost = cost;
+    }
     u
 }
 
@@ -122,6 +127,7 @@ fn render_inner(case: Case, draft: Prefs) {
             logos: &logos,
             menu_bar: case.name.ends_with("menu-bar"),
             heads_up: 80.0,
+            api_value: case.name.ends_with("-api-value"),
             bubble: case
                 .name
                 .ends_with("-talking")
@@ -161,6 +167,7 @@ fn render_inner(case: Case, draft: Prefs) {
             logos,
             menu_bar: case.name.ends_with("menu-bar"),
             heads_up: 80.0,
+            api_value: case.name.ends_with("-api-value"),
             bubble: case
                 .name
                 .ends_with("-talking")
@@ -232,6 +239,14 @@ fn expanded_working_with_details() {
         mood: Mood::Working,
         view: View { details: true, ..View::default() },
     });
+}
+
+// Settings → Appearance → Usage in API dollars: every token count reads as
+// its API value, and the lists rank by it
+#[test]
+fn expanded_details_api_value() {
+    let snap = snapshot(usage(true, Some("editing")), Some(limits(42.0, 68.0)));
+    render(Case { name: "expanded-details-api-value", snap, mood: Mood::Working, view: View { details: true, ..View::default() } });
 }
 
 #[test]
@@ -364,7 +379,7 @@ fn pet_only_working_with_its_glance() {
 
 pub(super) fn with_codex(mut snap: Snapshot, working: bool) -> Snapshot {
     use crate::codex::{CodexUsage, Window};
-    let l = |label: &str, tokens: u64| Labeled { label: label.into(), tokens };
+    let l = |label: &str, tokens: u64| Labeled::new(label, tokens);
     snap.codex = Some(CodexUsage {
         active: working,
         last_seen: Some(0),
@@ -833,6 +848,7 @@ fn pet_only_glance_button_stays_out_on_the_way_to_it() {
             logos,
             menu_bar: false,
             heads_up: 80.0,
+            api_value: false,
             bubble: None,
             update: Default::default(),
         };

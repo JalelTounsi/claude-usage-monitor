@@ -11,6 +11,22 @@ Where every number comes from: the Claude account and its local logs, several su
 
 Without a connected account the limits area shows _"Connect your account"_ instead of a %. The tokens still work.
 
+### Projects
+
+Claude Code keeps one log directory per working directory, named after its path. "By project" groups them by the project they belong to (`project_root` in `usage.rs`), not by that directory:
+
+- a worktree Claude Code made (`<project>/.claude/worktrees/<name>`) counts for `<project>`, read from the directory's name, so it still does once the worktree is deleted;
+- any other directory counts for the git repository it is in: the nearest parent with a `.git`, and for a git worktree kept elsewhere (its `.git` is a file) the repository that file points to;
+- a directory in no repository is its own project, and a home directory kept in git is never the project of what is under it.
+
+A path that no longer exists keeps its raw tail as the name: a wrong name is worse than an ugly one.
+
+### API value
+
+Switched on (a click on today's tokens in the expanded status line, or **⚙ Settings → Appearance → Usage in API dollars**; `apiValue` in `config.json`), Claude's token counts read in dollars: today, the session, the week, each model's week, by model, by project (ranked by value) and the 30 days. It is what those tokens would have cost on the API at list prices, whatever the plan; a subscription pays none of it ([ADR-018](../decisions/ADR-018-api-value-from-a-price-list.md)).
+
+Each answer in the logs is priced when it is read (`pricing.rs`): input, output, cache reads and cache writes (5-minute writes at 1.25× the input price, 1-hour writes at 2×, from `usage.cache_creation`) at its model's price per million tokens. A model the list doesn't know adds its tokens and no dollars. Not counted: the Batch discount, fast mode's premium, and Haiku 5.5's higher price past 100K tokens of prompt. Codex and Cursor keep their tokens: there is no price list for them.
+
 On Windows, Claude Code run inside WSL keeps its logs in the distro's home, out of Windows' sight. **⚙ Settings → Accounts → Claude → Claude Code in WSL** (off by default, Windows only, [ADR-015](../decisions/ADR-015-wsl-logs-are-opt-in.md)) makes the default account also read `\\wsl.localhost\<distro>\home\*\.claude\projects` (and `/root`'s) of every **running** distro, found with `wsl.exe --list --running` once a minute on a thread of its own, so a slow answer never holds up a poll (`platform/wsl.rs`). Those logs sit behind 9P, under 1 ms a directory, so they are walked whole once a minute; in between, a poll lists only the projects, walks again the ones whose directory changed (a new session) and re-reads the size of the logs written in the last half hour (a turn going on). A long-quiet log that grows again (a resumed session) counts from the next whole walk. A stopped distro is never opened, since that would boot it: its tokens drop out of the counts until it runs again. Project names from WSL resolve against the distro's own `/`.
 
 ## The Claude account

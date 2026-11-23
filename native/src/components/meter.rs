@@ -109,7 +109,8 @@ pub fn cursor_meters(c: &crate::cursor::CursorUsage) -> Vec<Meter> {
 
 /// The session, the week, and any per-model weekly limits. Connected but not
 /// read yet (or throttled): the meters stay, empty, rather than ask to log in.
-pub fn meters(snap: &Snapshot) -> Vec<Meter> {
+/// `api_value`: the tokens read in dollars, at API prices.
+pub fn meters(snap: &Snapshot, api_value: bool) -> Vec<Meter> {
     let (limits, at, usage) = (snap.limits.as_ref(), snap.limits_at, snap.usage.as_ref());
     let Some(l) = limits else {
         if !snap.connected {
@@ -122,8 +123,9 @@ pub fn meters(snap: &Snapshot) -> Vec<Meter> {
         let waiting = |label: &str| Meter { note: None, label: label.into(), pct: None, sub: sub.clone() };
         return vec![waiting("current session"), waiting("weekly · all models")];
     };
-    let session_tokens = usage.map(|u| u.session.tokens).unwrap_or(0);
-    let week_tokens = usage.map(|u| u.week.tokens).unwrap_or(0);
+    let spent = |tk: u64, cost: f64| if api_value { crate::format::dollars(cost) } else { format!("{} tokens", tokens(tk)) };
+    let session_spent = usage.map(|u| spent(u.session.tokens, u.session.cost)).unwrap_or_else(|| spent(0, 0.0));
+    let week_spent = usage.map(|u| spent(u.week.tokens, u.week.cost)).unwrap_or_else(|| spent(0, 0.0));
     let session = live(&l.session, at);
     let week = live(&l.week, at);
     let weekly = |week: Option<(f64, Option<i64>)>| Meter {
@@ -131,8 +133,8 @@ pub fn meters(snap: &Snapshot) -> Vec<Meter> {
         label: "weekly · all models".into(),
         pct: week.map(|w| w.0),
         sub: match week {
-            Some((_, Some(ms))) => format!("resets in {} · {} tokens", reset_in(ms), tokens(week_tokens)),
-            _ => format!("{} tokens · last 7 days", tokens(week_tokens)),
+            Some((_, Some(ms))) => format!("resets in {} · {week_spent}", reset_in(ms)),
+            _ => format!("{week_spent} · last 7 days"),
         },
     };
     // a weekly-only plan: the week leads, once
@@ -145,7 +147,7 @@ pub fn meters(snap: &Snapshot) -> Vec<Meter> {
                 label: "current session".into(),
                 pct: session.map(|s| s.0),
                 sub: match session {
-                    Some((_, Some(ms))) => format!("resets in {} · {} tokens", reset_in(ms), tokens(session_tokens)),
+                    Some((_, Some(ms))) => format!("resets in {} · {session_spent}", reset_in(ms)),
                     _ => "no active session".into(),
                 },
             },
@@ -156,15 +158,16 @@ pub fn meters(snap: &Snapshot) -> Vec<Meter> {
     for sc in &l.scoped {
         let Some((pct, reset)) = live(&Window { pct: sc.pct, reset_ms: sc.reset_ms }, at) else { continue };
         let key = sc.label.to_lowercase();
-        let family: u64 = usage.map(|u| u.by_model.iter().filter(|m| m.label.to_lowercase().starts_with(&key)).map(|m| m.tokens).sum()).unwrap_or(0);
+        let of_family = || usage.iter().flat_map(|u| &u.by_model).filter(|m| m.label.to_lowercase().starts_with(&key));
+        let family = spent(of_family().map(|m| m.tokens).sum(), of_family().map(|m| m.cost).sum());
         out.push(Meter {
             // the most of the week it may take, when the plan says
             note: sc.share.map(|s| format!("up to {s:.0}% of the week")),
             label: format!("weekly · {key}"),
             pct: Some(pct),
             sub: match reset {
-                Some(ms) => format!("resets in {} · {} tokens", reset_in(ms), tokens(family)),
-                None => format!("{} tokens", tokens(family)),
+                Some(ms) => format!("resets in {} · {family}", reset_in(ms)),
+                None => family,
             },
         });
     }
@@ -223,8 +226,8 @@ mod tests {
 
     #[test]
     fn no_account_means_no_meters() {
-        assert!(meters(&Snapshot::default()).is_empty());
-        let waiting = meters(&Snapshot { connected: true, ..Default::default() });
+        assert!(meters(&Snapshot::default(), false).is_empty());
+        let waiting = meters(&Snapshot { connected: true, ..Default::default() }, false);
         assert_eq!(waiting.len(), 2);
         assert!(waiting.iter().all(|m| m.pct.is_none()));
     }

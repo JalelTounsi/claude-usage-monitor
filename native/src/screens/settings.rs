@@ -65,7 +65,7 @@ fn pane_h(tab: Tab, snap: &Snapshot, view: &super::View) -> f32 {
     match tab {
         Tab::Accounts => TILES_H + 10.0 + CONN_H + if login { LOGIN_H } else { 0.0 } + wsl,
         Tab::Alerts => block_h(3) + GAP + block_h(1),
-        Tab::Appearance => block_h(1) + GAP + block_h(2) + GAP + block_h(2),
+        Tab::Appearance => block_h(1) + GAP + block_h(3) + GAP + block_h(2),
     }
 }
 
@@ -452,7 +452,7 @@ fn appearance(ui: &Ui, f: &Frame, left: f32, right: f32, y: f32, draft: &Prefs, 
     let below = gy + row;
 
     let gy = group_label(&p, left, below + GAP, "display");
-    let rows = group(&p, left, right, gy, 2);
+    let rows = group(&p, left, right, gy, 3);
     row_label(&p, left, rows[0], "Lives in", false);
     let seg = Rect::from_min_size(Pos2::new(right - 10.0 - 140.0, rows[0] - 12.0), Vec2::new(140.0, 24.0));
     if let Some(i) = segmented(ui, seg, "lives-in", &["Floating", "Menu bar"], draft.menu_bar as usize, text::SMALL, &[]) {
@@ -464,7 +464,13 @@ fn appearance(ui: &Ui, f: &Frame, left: f32, right: f32, y: f32, draft: &Prefs, 
         actions.push(Action::EditPrefs(Prefs { zoom: draft.zoom + 25 * d, ..draft.clone() }.clamped()));
     }
 
-    let gy = group_label(&p, left, gy + 2.0 * row + GAP, "voice");
+    // Claude's tokens as what they'd cost on the API, whatever the plan
+    row_label(&p, left, rows[2], "Usage in API dollars", false);
+    if toggle(ui, right - 10.0, rows[2], "api-value", draft.api_value, true).clicked() {
+        actions.push(Action::EditPrefs(Prefs { api_value: !draft.api_value, ..draft.clone() }));
+    }
+
+    let gy = group_label(&p, left, gy + 3.0 * row + GAP, "voice");
     let rows = group(&p, left, right, gy, 2);
     row_label(&p, left, rows[0], "Speech bubbles", false);
     if toggle(ui, right - 10.0, rows[0], "talk", draft.talk, true).clicked() {

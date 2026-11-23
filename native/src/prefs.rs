@@ -30,6 +30,8 @@ pub struct Prefs {
     pub muted_until: i64,
     /// the pet picked in Settings (a seasonal one may take over on its days)
     pub pet: String,
+    /// Claude's tokens read as what they'd cost on the API, in dollars (opt-in)
+    pub api_value: bool,
 }
 
 impl Default for Prefs {
@@ -48,6 +50,7 @@ impl Default for Prefs {
             sound: false,
             muted_until: 0,
             pet: crate::components::skins::DEFAULT.into(),
+            api_value: false,
         }
     }
 }
@@ -77,6 +80,7 @@ impl Prefs {
             talk: v["talk"].as_bool() != Some(false),
             pet: v["pet"].as_str().unwrap_or(crate::components::skins::DEFAULT).to_string(),
             sound: v["sound"].as_bool().unwrap_or(false),
+            api_value: v["apiValue"].as_bool().unwrap_or(false),
             muted_until: v["soundMutedUntil"].as_f64().unwrap_or(0.0) as i64,
             zoom: v["zoom"].as_f64().map(|z| z.round() as i32).unwrap_or(d.zoom),
         }
@@ -109,6 +113,7 @@ impl Prefs {
         v["sound"] = json!(self.sound);
         v["soundMutedUntil"] = json!(self.muted_until);
         v["pet"] = json!(self.pet);
+        v["apiValue"] = json!(self.api_value);
         v["mode"] = json!(if self.menu_bar { "menubar" } else { "floating" });
         for (key, on) in [("codex", self.codex), ("cursor", self.cursor), ("wsl", self.wsl)] {
             if !v[key].is_object() {
@@ -151,6 +156,7 @@ mod tests {
                 sound: false,
                 muted_until: 0,
                 pet: "clauddy".into(),
+                api_value: false,
             }
         );
         assert_eq!(Prefs::from_value(&json!({"pet": "wizard"})).pet, "wizard");
@@ -158,6 +164,7 @@ mod tests {
         assert!(Prefs::from_value(&json!({"cursor": {"enabled": true}})).cursor);
         assert!(Prefs::from_value(&json!({"wsl": {"enabled": true}})).wsl);
         assert!(!Prefs::default().wsl);
+        assert!(Prefs::from_value(&json!({"apiValue": true})).api_value);
         assert!(Prefs::from_value(&json!({"mode": "menubar"})).menu_bar);
         assert_eq!(Prefs::from_value(&json!({"zoom": 150})).zoom, 150);
         assert_eq!(Prefs::from_value(&json!({"zoom": 900})).zoom, 200);

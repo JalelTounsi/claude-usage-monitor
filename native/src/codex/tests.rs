@@ -217,7 +217,7 @@ fn attributes_each_delta_to_the_model_and_project_in_effect() {
 fn an_event_with_no_model_still_counts() {
     let mut fx = Fx::new();
     fx.write("rollout-e.jsonl", &[token_count("2026-09-12T19:00:00Z", 50, Value::Null)], now() - 10_000);
-    assert_eq!(fx.codex.get_usage(now()).unwrap().by_model, vec![Labeled { label: "unknown".into(), tokens: 50 }]);
+    assert_eq!(fx.codex.get_usage(now()).unwrap().by_model, vec![Labeled::new("unknown", 50)]);
 }
 
 #[test]

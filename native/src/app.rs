@@ -307,6 +307,12 @@ impl App {
                 }
                 Action::Logout => self.send(Command::Logout),
                 Action::SelectProvider(p) => self.view.provider = p,
+                Action::SetApiValue(on) => {
+                    // a switch on the panel itself: at once, like its folds
+                    self.prefs.api_value = on;
+                    self.draft.api_value = on;
+                    self.prefs.save();
+                }
                 Action::SetCodex(on) => {
                     // connecting a service takes effect at once, like logging in
                     self.prefs.codex = on;
@@ -695,6 +701,7 @@ impl eframe::App for App {
             logos: &self.logos,
             menu_bar: self.prefs.menu_bar,
             heads_up: self.prefs.heads_up.min(self.prefs.near_limit) as f64,
+            api_value: self.prefs.api_value,
             bubble,
             update: self.updater.state(),
         };

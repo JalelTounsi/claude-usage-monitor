@@ -49,6 +49,11 @@ fn line(l: L) -> String {
     .to_string()
 }
 
+// a list's names and tokens (what they cost has its own test)
+fn counts(rows: &[Labeled]) -> Vec<(&str, u64)> {
+    rows.iter().map(|r| (r.label.as_str(), r.tokens)).collect()
+}
+
 fn tok(tokens: u64) -> String {
     line(L { tokens, ..Default::default() })
 }
@@ -213,7 +218,7 @@ fn aggregates_weekly_tokens_per_label() {
     let mut fx = Fx::new();
     let m = |tokens, model| line(L { tokens, model: Some(model), ..Default::default() });
     fx.write_log(&[m(100, "claude-opus-5"), m(50, "claude-opus-5"), m(20, "claude-sonnet-5")]);
-    assert_eq!(fx.usage(&budget()).by_model, vec![Labeled { label: "Opus 5".into(), tokens: 150 }, Labeled { label: "Sonnet 5".into(), tokens: 20 }]);
+    assert_eq!(counts(&fx.usage(&budget()).by_model), vec![("Opus 5", 150), ("Sonnet 5", 20)]);
 }
 
 // ---- project labels ----
@@ -277,7 +282,73 @@ fn aggregates_weekly_tokens_per_project_directory() {
     let b = fx.real_dir("beta");
     fx.write_log_in(&[tok(100), tok(50)], "session.jsonl", &enc(&a));
     fx.write_log_in(&[tok(20)], "session.jsonl", &enc(&b));
-    assert_eq!(fx.usage(&budget()).by_project, vec![Labeled { label: "alpha".into(), tokens: 150 }, Labeled { label: "beta".into(), tokens: 20 }]);
+    assert_eq!(counts(&fx.usage(&budget()).by_project), vec![("alpha", 150), ("beta", 20)]);
+}
+
+#[test]
+fn a_worktree_counts_for_its_project_even_once_it_is_gone() {
+    let mut fx = Fx::new();
+    let a = fx.real_dir("alpha");
+    let kept = fx.real_dir("alpha/.claude/worktrees/brave-gates-57da57");
+    fx.write_log_in(&[tok(100)], "session.jsonl", &enc(&a));
+    fx.write_log_in(&[tok(30)], "session.jsonl", &enc(&kept));
+    fx.write_log_in(&[tok(7)], "session.jsonl", &format!("{}--claude-worktrees-c472-build-98fac6", enc(&a)));
+    assert_eq!(counts(&fx.usage(&budget()).by_project), vec![("alpha", 137)]);
+}
+
+#[test]
+fn a_subdirectory_and_a_git_worktree_count_for_their_repository() {
+    let mut fx = Fx::new();
+    let repo = fx.real_dir("gamma");
+    fs::create_dir_all(repo.join(".git")).unwrap();
+    let sub = fx.real_dir("gamma/packages/web");
+    // a worktree kept elsewhere: its .git is a file pointing into the repository
+    let tree = fx.real_dir("trees/gamma-fix");
+    let main = repo.canonicalize().unwrap();
+    fs::write(tree.join(".git"), format!("gitdir: {}/.git/worktrees/gamma-fix\n", main.display())).unwrap();
+    // in no repository: its own project
+    let loose = fx.real_dir("notes");
+    fx.write_log_in(&[tok(50)], "session.jsonl", &enc(&sub));
+    fx.write_log_in(&[tok(20)], "session.jsonl", &enc(&tree));
+    fx.write_log_in(&[tok(5)], "session.jsonl", &enc(&loose));
+    assert_eq!(counts(&fx.usage(&budget()).by_project), vec![("gamma", 70), ("notes", 5)]);
+}
+
+// ---- API value ----
+
+#[test]
+fn tokens_are_priced_at_their_model_and_kind() {
+    let mut fx = Fx::new();
+    let dir = fx.real_dir("priced");
+    let answer = |model: &str, usage: serde_json::Value| {
+        let n = SEQ.fetch_add(1, Ordering::SeqCst);
+        json!({"type": "assistant", "timestamp": iso(now_ms()), "requestId": format!("req-{n}"), "message": {"id": format!("msg-{n}"), "model": model, "usage": usage}}).to_string()
+    };
+    let m = 1_000_000;
+    fx.write_log_in(
+        &[
+            // $4 in + $20 out + $0.20 read + $5 written for 5 min + $8 written for an hour
+            answer(
+                "claude-opus-5-5",
+                json!({"input_tokens": m, "output_tokens": m, "cache_read_input_tokens": m, "cache_creation_input_tokens": 2 * m,
+                       "cache_creation": {"ephemeral_5m_input_tokens": m, "ephemeral_1h_input_tokens": m}}),
+            ),
+            // no split: a 5-minute write, $2.50 on Sonnet 5.5
+            answer("claude-sonnet-5-5", json!({"cache_creation_input_tokens": m})),
+            // not Claude's: counted, never priced
+            answer("some-other-model", json!({"input_tokens": m})),
+        ],
+        "session.jsonl",
+        &enc(&dir),
+    );
+    let u = fx.usage(&budget());
+    let near = |a: f64, b: f64| (a - b).abs() < 1e-9;
+    assert!(near(u.week.cost, 39.7), "{}", u.week.cost);
+    assert!(near(u.today_cost, 39.7) && near(u.month_cost, 39.7) && near(u.session.cost, 39.7));
+    assert_eq!(u.by_project.len(), 1);
+    assert!(near(u.by_project[0].cost, 39.7));
+    let cost = |label: &str| u.by_model.iter().find(|r| r.label == label).map(|r| r.cost).unwrap();
+    assert!(near(cost("Opus 5.5"), 37.2) && near(cost("Sonnet 5.5"), 2.5) && near(cost("some-other-model"), 0.0));
 }
 
 #[test]

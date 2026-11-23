@@ -17,6 +17,7 @@ use crate::components::night_sky::night_sky;
 use crate::components::pet::Mood;
 use crate::components::reminder;
 use crate::components::status::{STATUS_H, status_line};
+use crate::format::{dollars, tokens};
 use crate::poller::Login;
 use crate::poller::Snapshot;
 use crate::ui::controls::BUTTON;
@@ -60,9 +61,12 @@ struct Service<'a> {
     by_project: &'a [Labeled],
     days30: &'a [u64],
     month: u64,
+    /// today's and the 30 days' tokens at API prices; None where there's no
+    /// price list (Codex)
+    cost: Option<(f64, f64)>,
 }
 
-fn service<'a>(snap: &'a Snapshot, provider: Provider, empty: &'a crate::usage::Usage) -> Service<'a> {
+fn service<'a>(snap: &'a Snapshot, provider: Provider, empty: &'a crate::usage::Usage, api_value: bool) -> Service<'a> {
     match provider {
         Provider::Cursor if let Some(c) = &snap.cursor => Service {
             provider,
@@ -79,6 +83,7 @@ fn service<'a>(snap: &'a Snapshot, provider: Provider, empty: &'a crate::usage::
             by_project: &[],
             days30: &[],
             month: 0,
+            cost: None,
         },
         Provider::Codex if let Some(c) = &snap.codex => Service {
             provider,
@@ -95,12 +100,13 @@ fn service<'a>(snap: &'a Snapshot, provider: Provider, empty: &'a crate::usage::
             by_project: &c.by_project,
             days30: &c.days30,
             month: c.month_tokens,
+            cost: None,
         },
         _ => {
             let u = snap.usage.as_ref().unwrap_or(empty);
             Service {
                 provider: Provider::Claude,
-                meters: meters(snap),
+                meters: meters(snap, api_value),
                 accent: color::ACCENT,
                 bar: color::BREAKDOWN,
                 heat: &color::HEAT,
@@ -113,6 +119,7 @@ fn service<'a>(snap: &'a Snapshot, provider: Provider, empty: &'a crate::usage::
                 by_project: &u.by_project,
                 days30: &u.days30,
                 month: u.month_tokens,
+                cost: api_value.then_some((u.today_cost, u.month_cost)),
             }
         }
     }
@@ -163,7 +170,8 @@ fn reminder_h(snap: &Snapshot, provider: Provider, session: Option<(f64, Option<
 /// shape: two meters and Details as it was left.
 pub fn size(snap: &Snapshot, view: &View, session: Option<(f64, Option<i64>)>, heads_up: f64) -> [f32; 2] {
     let empty = crate::usage::Usage::empty();
-    let s = service(snap, shown_in(snap, view), &empty);
+    // the values' wording never changes the panel's shape
+    let s = service(snap, shown_in(snap, view), &empty, false);
     let login = s.provider == Provider::Claude && logging_in(snap);
     let extra = if snap.loaded && !login && !s.meters.is_empty() { reminder_h(snap, s.provider, session, heads_up) } else { 0.0 };
     let m = if snap.loaded { s.meters.len() } else { 2 };
@@ -177,7 +185,7 @@ pub fn size(snap: &Snapshot, view: &View, session: Option<(f64, Option<i64>)>, h
 pub fn draw(ui: &mut Ui, ctx: &Context, f: &Frame, code: &mut String) -> Vec<Action> {
     let mut actions = vec![];
     let empty = crate::usage::Usage::empty();
-    let svc = service(f.snap, shown(f), &empty);
+    let svc = service(f.snap, shown(f), &empty, f.api_value);
     let rect = f.area;
     card_tinted(ui, ctx, f.card, svc.provider.surface());
     let (left, right) = (rect.left() + SIDE, rect.right() - SIDE);
@@ -216,7 +224,25 @@ pub fn draw(ui: &mut Ui, ctx: &Context, f: &Frame, code: &mut String) -> Vec<Act
         (false, Mood::Working) => Mood::Idle, // the other service is the one working
         (false, m) => m,
     };
-    status_line(p, left, right, stage.bottom() + 17.0, mood, activity, svc.today, svc.live);
+    let today = svc.today.map(|n| match svc.cost {
+        Some((today, _)) => format!("{} today", dollars(today)),
+        None => format!("{} tokens today", tokens(n)),
+    });
+    let today_at = status_line(p, left, right, stage.bottom() + 17.0, mood, activity, today.as_deref(), svc.live);
+    // a click on today's usage switches Claude's numbers between tokens and
+    // their API value in dollars (Codex and Cursor have no price list)
+    if svc.provider == Provider::Claude
+        && let Some(at) = today_at
+    {
+        let resp = click_area(ui, at.expand2(Vec2::new(4.0, 6.0)), "api-value");
+        if resp.hovered() {
+            let under = at.bottom() + 2.0;
+            p.line_segment([Pos2::new(at.left(), under), Pos2::new(at.right(), under)], Stroke::new(1.0, color::FG_MUTED));
+        }
+        if resp.on_hover_text(if f.api_value { "Show tokens" } else { "Show the API value in dollars" }).clicked() {
+            actions.push(Action::SetApiValue(!f.api_value));
+        }
+    }
     let mut y = stage.bottom() + STATUS_H;
     hairline(p, left, right, y);
 
@@ -419,12 +445,25 @@ pub fn account_menu_overlay(ui: &Ui, ctx: &Context, f: &Frame, rect: Rect, chip:
 /// none for the other services, or before a reading.
 fn products(snap: &Snapshot, provider: Provider) -> Vec<crate::usage::Labeled> {
     let rows = snap.limits.as_ref().filter(|_| provider == Provider::Claude).map(|l| l.by_product.as_slice()).unwrap_or_default();
-    rows.iter().take(PRODUCT_ROWS).map(|r| crate::usage::Labeled { label: r.label.clone(), tokens: r.pct.round() as u64 }).collect()
+    rows.iter().take(PRODUCT_ROWS).map(|r| crate::usage::Labeled::new(r.label.clone(), r.pct.round() as u64)).collect()
+}
+
+/// The rows as the section draws them: by tokens, or by API value (held in
+/// cents and ranked again, the `other` row staying last).
+fn rows(list: &[Labeled], api_value: bool) -> Vec<Labeled> {
+    if !api_value {
+        return list.to_vec();
+    }
+    let mut rows: Vec<Labeled> = list.iter().map(|r| Labeled { tokens: (r.cost * 100.0).round() as u64, ..r.clone() }).collect();
+    rows.sort_by_key(|r| (r.label.starts_with("other · "), std::cmp::Reverse(r.tokens)));
+    rows
 }
 
 fn details(ui: &Ui, p: &egui::Painter, left: f32, right: f32, mut y: f32, s: &Service, f: &Frame, actions: &mut Vec<Action>) {
-    let models = &s.by_model[..s.by_model.len().min(MODEL_ROWS)];
-    let projects = &s.by_project[..s.by_project.len().min(PROJECT_ROWS)];
+    let value = if s.cost.is_some() { breakdown::dollars } else { breakdown::tokens };
+    let (models, projects) = (rows(s.by_model, s.cost.is_some()), rows(s.by_project, s.cost.is_some()));
+    let models = &models[..models.len().min(MODEL_ROWS)];
+    let projects = &projects[..projects.len().min(PROJECT_ROWS)];
     let products = products(f.snap, s.provider);
     if !products.is_empty() {
         if section(ui, left, right, y, "products", "by product · this week", &products, f.view.products, !f.snap.loaded, s.bar, breakdown::percent) {
@@ -432,15 +471,19 @@ fn details(ui: &Ui, p: &egui::Painter, left: f32, right: f32, mut y: f32, s: &Se
         }
         y += breakdown::height(products.len(), f.view.products);
     }
-    if section(ui, left, right, y, "models", "by model · 7 days", models, f.view.models, !f.snap.loaded, s.bar, breakdown::tokens) {
+    if section(ui, left, right, y, "models", "by model · 7 days", models, f.view.models, !f.snap.loaded, s.bar, value) {
         actions.push(Action::ToggleModels);
     }
     y += breakdown::height(models.len(), f.view.models);
-    if section(ui, left, right, y, "projects", "by project · 7 days", projects, f.view.projects, !f.snap.loaded, s.bar, breakdown::tokens) {
+    if section(ui, left, right, y, "projects", "by project · 7 days", projects, f.view.projects, !f.snap.loaded, s.bar, value) {
         actions.push(Action::ToggleProjects);
     }
     y += breakdown::height(projects.len(), f.view.projects);
-    heat_map(p, left, right, y, s.days30, s.month, s.heat);
+    let total = match s.cost {
+        Some((_, month)) => format!("{} at API prices", dollars(month)),
+        None => format!("{} tokens", tokens(s.month)),
+    };
+    heat_map(p, left, right, y, s.days30, &total, s.heat);
 }
 
 // the service tabs: logo, name and session % each; the chosen one on a
