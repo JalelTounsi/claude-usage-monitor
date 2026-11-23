@@ -84,11 +84,10 @@ pub const SKINS: &[Skin] = &[
         pack: "everyday",
         working: include_bytes!("../../assets/ninja-working.png"),
         moods: include_bytes!("../../assets/ninja-moods.png"),
-        // the sword on its back
-        work_box: [0.043, 0.074, 0.969, 0.934],
+        work_box: [0.043, 0.152, 0.969, 0.934],
         fire_box: [0.086, 0.062, 0.93, 0.816],
-        // the sword and the headband's tails stand with it
-        stand_box: [0.152, 0.078, 0.93, 0.797],
+        // the sword stands with it; the headband's tails hang outside
+        stand_box: [0.176, 0.156, 0.848, 0.797],
     },
     Skin {
         id: "pirate",
@@ -96,7 +95,7 @@ pub const SKINS: &[Skin] = &[
         pack: "everyday",
         working: include_bytes!("../../assets/pirate-working.png"),
         moods: include_bytes!("../../assets/pirate-moods.png"),
-        work_box: [0.043, 0.117, 0.969, 0.934],
+        work_box: [0.043, 0.094, 0.969, 0.934],
         fire_box: [0.086, 0.062, 0.906, 0.816],
         // the hat stands with it
         stand_box: [0.176, 0.094, 0.848, 0.797],
@@ -107,10 +106,10 @@ pub const SKINS: &[Skin] = &[
         pack: "everyday",
         working: include_bytes!("../../assets/chef-working.png"),
         moods: include_bytes!("../../assets/chef-moods.png"),
-        work_box: [0.043, 0.09, 0.969, 0.934],
+        work_box: [0.043, 0.066, 0.969, 0.934],
         fire_box: [0.062, 0.062, 0.906, 0.816],
-        // the toque and the spoon stand with it
-        stand_box: [0.062, 0.062, 0.848, 0.797],
+        // the toque stands with it; the spoon hangs outside
+        stand_box: [0.176, 0.062, 0.848, 0.797],
     },
     Skin {
         id: "doctor",
@@ -129,10 +128,10 @@ pub const SKINS: &[Skin] = &[
         pack: "everyday",
         working: include_bytes!("../../assets/engineer-working.png"),
         moods: include_bytes!("../../assets/engineer-moods.png"),
-        work_box: [0.043, 0.152, 0.969, 0.934],
+        work_box: [0.043, 0.129, 0.969, 0.934],
         fire_box: [0.062, 0.062, 0.906, 0.816],
-        // the hard hat and the wrench stand with it
-        stand_box: [0.062, 0.133, 0.848, 0.797],
+        // the hard hat stands with it; the wrench hangs outside
+        stand_box: [0.176, 0.133, 0.848, 0.797],
     },
     Skin {
         id: "driver",
@@ -141,9 +140,9 @@ pub const SKINS: &[Skin] = &[
         working: include_bytes!("../../assets/driver-working.png"),
         moods: include_bytes!("../../assets/driver-moods.png"),
         work_box: [0.043, 0.203, 0.969, 0.934],
-        fire_box: [0.016, 0.062, 0.906, 0.816],
-        // the helmet and the flag stand with it
-        stand_box: [0.016, 0.219, 0.848, 0.797],
+        fire_box: [0.062, 0.062, 0.906, 0.816],
+        // the helmet stands with it; the flag hangs outside
+        stand_box: [0.176, 0.219, 0.848, 0.797],
     },
     Skin {
         id: "santa",

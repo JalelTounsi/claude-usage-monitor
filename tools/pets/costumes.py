@@ -46,6 +46,8 @@ PALETTE = {
     "e": (24, 120, 90),  # helmet
     "E": (244, 244, 244),
     "f": (150, 150, 162),  # flag pole
+    "x": (96, 100, 128),  # sword grip
+    "X": (52, 54, 76),
 }
 
 HELMET = PALETTE["e"]
@@ -126,22 +128,51 @@ DOME = [
 
 # flying away from the body, its pole on the right
 FLAG = [
-    "EjEjEjf",
-    "jEjEjEf",
-    "EjEjEjf",
-    "jEjEjEf",
-    "......f",
-    "......f",
-    "......f",
-    "......f",
-    "......f",
-    "......f",
+    "EjEjf",
+    "jEjEf",
+    "EjEjf",
+    "jEjEf",
+    "....f",
+    "....f",
+    "....f",
+    "....f",
+    "....f",
+    "....f",
+]
+
+# on the back, hilt up: the blade is behind the body
+SWORD = [
+    "gg.......",
+    "gxx......",
+    ".xXx.....",
+    "..xxx....",
+    "...xXx.g.",
+    "....xxgg.",
+    "....ggx..",
+    "...gg.xx.",
+    ".......xx",
+]
+
+CHESTPIECE = [
+    ".m.",
+    "mMm",
+    ".m.",
+]
+
+FIRST_AID = [
+    "..ddd..",
+    "wwwwwww",
+    "wwwrwww",
+    "wwrrrww",
+    "wwwrwww",
+    "wwwwwww",
 ]
 
 # the knot and its tails, in two poses so they flutter
 TAILS = [
     ["rr....", "rrrrr.", "rr.qrr", "rrq..."],
     ["rr....", "rrrr..", "rrqrrr", "rr..qr"],
+    ["rr....", "rrr...", ".rq...", ".rr..."],  # hanging: asleep, worn out
 ]
 
 
@@ -220,50 +251,85 @@ def dye(frame, a, kind, left, width, top, rgb, where):
     frame.paste(Image.fromarray(px.astype("uint8"), "RGBA"))
 
 
-def chef(frame, a, kind, i, cell, cx, width, top):
-    zz = lift_zz(frame, kind, i, top, 22)
-    hat = grid_layer(TOQUE, cell)
-    paste(frame, hat, cx - hat.width / 2, top + 6 - hat.height)
+def behind(frame, draw):
+    """Draw on a layer under the frame's own art."""
+    back = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    draw(back)
+    back.alpha_composite(frame)
+    frame.paste(back)
+
+
+def pixel_line(d, x0, y0, x1, y1, u, fill):
+    """A line in squares of `u` px, like the rest of the art."""
+    n = int(max(abs(x1 - x0), abs(y1 - y0)) // u) + 1
+    for k in range(n + 1):
+        gx, gy = int((x0 + (x1 - x0) * k / n) // u) * u, int((y0 + (y1 - y0) * k / n) // u) * u
+        d.rectangle([gx, gy, gx + u - 1, gy + u - 1], fill=fill)
+
+
+def row_of(kind, i):
+    """The mood a frame plays: idle, asleep, fire or tired; None at the desk."""
+    return None if kind == "working" else ("idle", "asleep", "fire", "tired")[i // 4]
+
+
+def sway(kind, i):
+    """How far a hat sits off the head: slumped asleep, hopping on fire, slipping when worn out."""
+    if kind == "working":
+        return {4: (-8, 2), 6: (0, -6)}.get(i, (0, 0))  # stuck, and the cheer
+    return {"idle": (0, 0), "asleep": (4, 3), "fire": (0, -4 if i % 2 else 0), "tired": (-9, 3)}[row_of(kind, i)]
+
+
+# where a prop stands at the desk: behind the monitor, its foot hidden
+DESK_PROP = (22, 62)
+
+
+def hat_and_prop(frame, kind, i, cell, cx, width, top, hat, prop, lap=6):
+    zz = lift_zz(frame, kind, i, top, 24)
+    sx, sy = sway(kind, i)
+    layer = grid_layer(hat, cell)
+    paste(frame, layer, cx - layer.width / 2 + sx, top + lap - layer.height + sy)
+    held = grid_layer(prop, 5)
     if kind == "moods":
-        spoon = grid_layer(SPOON, 5)
-        paste(frame, spoon, cx - width / 2 - 49, top + 30)
+        paste(frame, held, cx - width / 2 - 24 - held.width, top + 30)
+    else:
+        behind(frame, lambda back: paste(back, held, *DESK_PROP))
     if zz:
         zz()
 
 
+def chef(frame, a, kind, i, cell, cx, width, top):
+    hat_and_prop(frame, kind, i, cell, cx, width, top, TOQUE, SPOON)
+
+
+def engineer(frame, a, kind, i, cell, cx, width, top):
+    hat_and_prop(frame, kind, i, cell, cx, width, top, HARD_HAT, WRENCH, lap=8)
+
+
 def pirate(frame, a, kind, i, cell, cx, width, top):
     left = cx - width / 2
-    zz = lift_zz(frame, kind, i, top, 22)
+    zz = lift_zz(frame, kind, i, top, 24)
     d = ImageDraw.Draw(frame)
+    u = 4
     eye_x, eye_y = left + 0.335 * width, top + 0.33 * width
     # the strap, from under the hat on one side to the other
-    d.line([left + 2, top + 0.30 * width, left + width - 2, top + 0.10 * width], fill=OUTLINE, width=cell // 2 + 1)
+    pixel_line(d, left + 2, top + 0.30 * width, left + width - 6, top + 0.10 * width, u, OUTLINE)
     half = 0.105 * width
-    d.rectangle([eye_x - half, eye_y - 1.35 * half, eye_x + half, eye_y + 1.5 * half], fill=OUTLINE)
+    x0, y0 = int((eye_x - half) // u) * u, int((eye_y - 1.35 * half) // u) * u
+    d.rectangle([x0, y0, x0 + 6 * u - 1, y0 + 7 * u - 1], fill=OUTLINE)
+    if kind == "moods":  # a gold ring in the ear
+        ring = grid_layer(["gg", "gg"], u)
+        paste(frame, ring, left + width + 5, top + 0.5 * width)
+    sx, sy = sway(kind, i)
     hat = grid_layer(TRICORN, cell)
-    paste(frame, hat, cx - hat.width / 2, top + 6 - hat.height)
+    paste(frame, hat, cx - hat.width / 2 + sx, top + 6 - hat.height + sy)
     if zz:
         zz()
 
 
 def ninja(frame, a, kind, i, cell, cx, width, top):
     left = cx - width / 2
-    # a sword on the back: drawn, then the original art put back over it
-    back = Image.new("RGBA", frame.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(back)
-    x0, y0, x1, y1 = left + 34, top + 30, left - 22, top - 50
-    d.line([x0, y0, x1, y1], fill=OUTLINE, width=cell + 12)
-    d.line([x0, y0, x1, y1], fill=(96, 100, 128, 255), width=cell + 4)
-    for k in (0.2, 0.45, 0.7):  # the grip's wrap
-        wx, wy = x1 + (x0 - x1) * k * 0.6, y1 + (y0 - y1) * k * 0.6
-        d.line([wx - 6, wy - 4, wx + 6, wy + 4], fill=(52, 54, 76, 255), width=3)
-    d.ellipse([x1 - 8, y1 - 8, x1 + 8, y1 + 8], fill=OUTLINE)
-    d.ellipse([x1 - 4, y1 - 4, x1 + 4, y1 + 4], fill=PALETTE["g"] + (255,))
-    gx, gy = left + 1, top - 15
-    d.line([gx - 17, gy - 12, gx + 17, gy + 12], fill=OUTLINE, width=cell + 8)
-    d.line([gx - 14, gy - 10, gx + 14, gy + 10], fill=PALETTE["g"] + (255,), width=cell)
-    back.alpha_composite(frame)
-    frame.paste(back)
+    sword = grid_layer(SWORD, 6)
+    behind(frame, lambda back: paste(back, sword, left + 30 - sword.width, top + 20 - sword.height))
 
     # the suit, but for a slot at the eyes
     dye(frame, a, kind, left, width, top, (50, 56, 86), lambda xs, ys: ~eye_slot(xs, ys, left, width, top))
@@ -272,7 +338,8 @@ def ninja(frame, a, kind, i, cell, cx, width, top):
     ImageDraw.Draw(band).rectangle([0, band.height - cell // 3, band.width, band.height], fill=PALETTE["q"] + (255,))
     by = top + 0.15 * width - band.height - 2
     paste(frame, band, left - 4, by)
-    tails = grid_layer(TAILS[i % 2], cell - 2)
+    pose = 2 if row_of(kind, i) in ("asleep", "tired") else i % 2
+    tails = grid_layer(TAILS[pose], cell - 2)
     paste(frame, tails, left + width + 6, by - 2)
 
 
@@ -282,30 +349,22 @@ def doctor(frame, a, kind, i, cell, cx, width, top):
     dye(frame, a, kind, left, width, top, (244, 244, 248), lambda xs, ys: ys > top + 0.6 * width)
     if kind == "moods":
         d = ImageDraw.Draw(frame)
-        tube, y0, y1 = (58, 62, 80, 255), top + 0.6 * width, top + 0.78 * width
-        d.line([left + 0.3 * width, y0, cx, y1], fill=tube, width=5)
-        d.line([left + 0.7 * width, y0, cx, y1], fill=tube, width=5)
-        d.ellipse([cx - 9, y1 - 5, cx + 9, y1 + 13], fill=OUTLINE)
-        d.ellipse([cx - 5, y1 - 1, cx + 5, y1 + 9], fill=PALETTE["m"] + (255,))
-        x, y, u = left + 0.14 * width, top + 0.66 * width, 4  # a red cross on the coat
+        u, tube, y0, y1 = 4, (58, 62, 80, 255), top + 0.6 * width, top + 0.76 * width
+        pixel_line(d, left + 0.3 * width, y0, cx - u, y1, u, tube)
+        pixel_line(d, left + 0.7 * width, y0, cx, y1, u, tube)
+        piece = grid_layer(CHESTPIECE, u)
+        paste(frame, piece, cx - piece.width / 2, y1 + 2)
+        x, y = left + 0.14 * width, top + 0.66 * width  # a red cross on the coat
         d.rectangle([x + u, y, x + 2 * u - 1, y + 3 * u - 1], fill=PALETTE["r"] + (255,))
         d.rectangle([x, y + u, x + 3 * u - 1, y + 2 * u - 1], fill=PALETTE["r"] + (255,))
-    # the head mirror on its strap
+    else:
+        case = grid_layer(FIRST_AID, 5)
+        behind(frame, lambda back: paste(back, case, DESK_PROP[0] - 2, DESK_PROP[1] + 28))
+    # the head mirror on its strap; it slides with the head's mood
     strap = Image.new("RGBA", (int(width) + 8, cell), (84, 90, 108, 255))
     paste(frame, strap, left - 4, top + 0.15 * width - cell - 4)
     mirror = grid_layer(MIRROR, cell - 2)
-    paste(frame, mirror, cx - mirror.width / 2, top + 0.15 * width - cell - mirror.height + 6)
-
-
-def engineer(frame, a, kind, i, cell, cx, width, top):
-    zz = lift_zz(frame, kind, i, top, 22)
-    hat = grid_layer(HARD_HAT, cell)
-    paste(frame, hat, cx - hat.width / 2, top + 8 - hat.height)
-    if kind == "moods":
-        wrench = grid_layer(WRENCH, 5)
-        paste(frame, wrench, cx - width / 2 - 49, top + 30)
-    if zz:
-        zz()
+    paste(frame, mirror, cx - mirror.width / 2 + 2 * sway(kind, i)[0], top + 0.15 * width - cell - mirror.height + 6)
 
 
 def driver(frame, a, kind, i, cell, cx, width, top):
@@ -315,9 +374,19 @@ def driver(frame, a, kind, i, cell, cx, width, top):
     dye(frame, a, kind, left, width, top, (244, 244, 244), lambda xs, ys: (abs(xs - cx) < cell) & (ys < top + 0.15 * width))
     dome = grid_layer(DOME, cell)
     paste(frame, dome, cx - dome.width / 2, top + 6 - dome.height)
+    flag = grid_layer(FLAG, 5)
     if kind == "moods":
-        flag = grid_layer(FLAG, 5)
-        paste(frame, flag, left - 26 - flag.width, top + 6)
+        paste(frame, flag, left - 24 - flag.width, top + 6)
+    else:
+        behind(frame, lambda back: paste(back, flag, DESK_PROP[0] - 4, DESK_PROP[1]))
+    if row_of(kind, i) == "fire":  # visor down, with a glint
+        x0, y0, x1, y1 = (int(v) for v in (left + 0.07 * width, top + 0.15 * width, left + 0.93 * width, top + 0.55 * width))
+        visor = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(visor)
+        d.rectangle([x0, y0, x1, y1], fill=(28, 34, 58, 150))
+        d.rectangle([x0 + 8, y0 + 6, x0 + 23, y0 + 9], fill=(210, 226, 255, 200))
+        d.rectangle([x0 + 8, y0 + 10, x0 + 11, y0 + 17], fill=(210, 226, 255, 200))
+        frame.alpha_composite(visor)
 
 
 PETS = {"ninja": ninja, "pirate": pirate, "chef": chef, "doctor": doctor, "engineer": engineer, "driver": driver}
@@ -349,7 +418,11 @@ def build(pet, draw):
             boxes["work_box"] = bbox(frames)
         else:
             boxes["fire_box"] = bbox(frames[8:12])
-            boxes["stand_box"] = bbox(frames[0:4])
+            # standing, the body sets the width: what it holds hangs outside, so every pet
+            # stands the same size, in the middle
+            body = bbox([src.crop((c * FRAME, 0, (c + 1) * FRAME, FRAME)) for c in range(4)])
+            stand = bbox(frames[0:4])
+            boxes["stand_box"] = [body[0], stand[1], body[2], stand[3]]
     return boxes
 
 

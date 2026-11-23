@@ -23,7 +23,7 @@ A pet is a pair of sprite sheets in the classic sprite's layout, generated in it
 - **Working**, 4 × 2 frames at 1024 × 512: the pet at its desk, typing, blinking, struggling and cheering.
 - **Moods**, 4 × 4 frames at 1024 × 1024: one row each for idle, sleeping, on fire and maxed out.
 
-Each pet is a `Skin` in `native/src/components/skins.rs`, with the sheets compiled into the app and three boxes that say where the art sits in a frame: the whole desk scene, the body with its flames, and the body standing. The standing box keeps the pet the same size and on the same baseline across moods; a sheet is decoded the first time its pet is shown.
+Each pet is a `Skin` in `native/src/components/skins.rs`, with the sheets compiled into the app and three boxes that say where the art sits in a frame: the whole desk scene, the body with its flames, and the body standing. The standing box is as wide as the body and what it wears; a prop held at its side (a spoon, a flag) hangs outside it, so every pet stands the same size. The standing box keeps the pet the same size and on the same baseline across moods; a sheet is decoded the first time its pet is shown.
 
 ## Holidays
 
