@@ -6,8 +6,8 @@ Thanks for wanting to help Clauddy. This page is the short version: how a contri
 
 | You have | Start with |
 |---|---|
-| A bug you can reproduce | An issue from the [Bug report](https://github.com/renatoaug/claude-usage-monitor/issues/new?template=bug_report.yml) template: what you did, what you expected and what happened |
-| An idea or a new feature | An issue from the [Feature request](https://github.com/renatoaug/claude-usage-monitor/issues/new?template=feature_request.yml) template, before writing code, so we agree on the shape first |
+| A bug you can reproduce | An issue from the [Bug report](https://github.com/JalelTounsi/claude-usage-monitor/issues/new?template=bug_report.yml) template: what you did, what you expected and what happened |
+| An idea or a new feature | An issue from the [Feature request](https://github.com/JalelTounsi/claude-usage-monitor/issues/new?template=feature_request.yml) template, before writing code, so we agree on the shape first |
 | A small, obvious fix (a typo, a doc, a one-line bug) | A pull request straight away |
 
 Work on an issue someone else is already on only after asking in it.

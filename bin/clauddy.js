@@ -9,7 +9,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { spawn, execFileSync } = require('node:child_process')
 
-const REPO = 'renatoaug/claude-usage-monitor'
+const REPO = 'JalelTounsi/claude-usage-monitor'
 
 // the release asset for an OS, and the file inside it to start
 function assetFor(platform, arch, version) {

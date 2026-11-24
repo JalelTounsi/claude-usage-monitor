@@ -11,7 +11,7 @@ Installing Clauddy on each platform, running it from the code, every setting in 
 **As an app, opening at login (recommended).** One command downloads the latest release and puts it in `/Applications`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/renatoaug/claude-usage-monitor/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/JalelTounsi/claude-usage-monitor/main/install.sh | bash
 ```
 
 [`install.sh`](../../install.sh) only downloads the release zip from this repo, replaces the app and opens it. It exists because macOS blocks unsigned apps downloaded through a browser with a _"damaged, move to Trash"_ warning; only a paid Apple signature ($99 a year) silences it, and files fetched with `curl` are not flagged. The app then registers in **Login Items** and starts with the Mac.
@@ -30,7 +30,7 @@ The first run of each version downloads that version's app from the release (abo
 bunx clauddy   # or: npx clauddy
 ```
 
-Or the standalone app: the portable zip (`Clauddy-<version>-win-x64.zip`) from the [latest release](https://github.com/renatoaug/claude-usage-monitor/releases); unzip it anywhere and run `Clauddy.exe`. The app is unsigned, so **SmartScreen** shows _"Windows protected your PC"_ the first time: **More info → Run anyway**. From then on it starts with Windows.
+Or the standalone app: the portable zip (`Clauddy-<version>-win-x64.zip`) from the [latest release](https://github.com/JalelTounsi/claude-usage-monitor/releases); unzip it anywhere and run `Clauddy.exe`. The app is unsigned, so **SmartScreen** shows _"Windows protected your PC"_ the first time: **More info → Run anyway**. From then on it starts with Windows.
 
 ### Linux (x64)
 
@@ -38,7 +38,7 @@ Or the standalone app: the portable zip (`Clauddy-<version>-win-x64.zip`) from t
 bunx clauddy   # or: npx clauddy
 ```
 
-Or the tarball (`Clauddy-<version>-linux-x64.tar.gz`) from the [latest release](https://github.com/renatoaug/claude-usage-monitor/releases):
+Or the tarball (`Clauddy-<version>-linux-x64.tar.gz`) from the [latest release](https://github.com/JalelTounsi/claude-usage-monitor/releases):
 
 ```bash
 tar -xzf Clauddy-*-linux-x64.tar.gz
