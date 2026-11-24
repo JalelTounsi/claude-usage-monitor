@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use eframe::egui::Context;
 
-const REPO: &str = "renatoaug/claude-usage-monitor";
+const REPO: &str = "JalelTounsi/claude-usage-monitor";
 const FIRST: Duration = Duration::from_secs(8);
 const EVERY: Duration = Duration::from_secs(6 * 3600);
 
