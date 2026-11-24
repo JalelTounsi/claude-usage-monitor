@@ -1,6 +1,13 @@
 # <img src="https://github.com/user-attachments/assets/e5487d3e-aadb-466d-bd2b-cfba5476d3db" alt="" width="40" align="top"> Clauddy
 
-A pixel-art desktop pet that keeps an eye on your Claude Code usage: the real session and weekly % from your account, the tokens from your local logs, and a pet that works, sleeps and catches fire along with it. It can follow Codex and Cursor too, and you can dress it as a wizard, Santa or a gingerbread cookie.
+A pixel-art desktop pet that keeps an eye on your Claude Code usage: the real session and weekly % from your account, the tokens from your local logs, and a pet that works, sleeps and catches fire along with it. It can follow Codex and Cursor too, and you can dress it as a wizard, a ninja, a pirate or Santa: fourteen pets in all.
+
+This is a fork of [renatoaug/claude-usage-monitor](https://github.com/renatoaug/claude-usage-monitor). On top of the original it adds:
+
+- **What the usage is worth**: tokens / $ switches the counts to what they would have cost on the API, from a price list you can correct in `prices.json`
+- **Projects by repository**: subdirectories and worktrees count for their repository, and a click on a project opens its models, its last 7 days, its worktrees and its cache share
+- **Top sessions and a span**: the five heaviest sessions, over today, 7 days or 30 days
+- **Six more pets**: ninja, pirate, chef, doctor, engineer and a racing driver in a race car
 
 <p align="center">
   <a href="#running">📚 Get started</a> ·
@@ -28,19 +35,22 @@ More details, with every tool and version, in [`docs/design/01-architecture.md`]
 
 ## Running
 
-On macOS, as an app that opens at login:
+This fork has no release of its own yet, so what it adds comes from the code. On macOS, as an app:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/renatoaug/claude-usage-monitor/main/install.sh | bash
+git clone https://github.com/JalelTounsi/claude-usage-monitor && cd claude-usage-monitor/native
+scripts/bundle.sh && open target/Clauddy.app
 ```
 
-Anywhere, without installing:
+On Windows and Linux, `cargo run --release` from `native/`.
+
+The original's released build, without what this fork adds, runs anywhere without installing:
 
 ```bash
 bunx clauddy
 ```
 
-[`docs/design/03-setup.md`](docs/design/03-setup.md) has Windows and Linux, updating, running from the code and every setting in `config.json`.
+[`docs/design/03-setup.md`](docs/design/03-setup.md) has Windows and Linux, updating, running from the code and every setting in `config.json`; its install commands are the original's.
 
 ## Test
 
@@ -71,9 +81,9 @@ Everything stays on your machine, in `~/.claude-usage-monitor/`. Nothing leaves 
 
 ## Community
 
-- 🐛 [GitHub Issues](https://github.com/renatoaug/claude-usage-monitor/issues): report a bug or propose a feature
+- 🐛 [GitHub Issues](https://github.com/renatoaug/claude-usage-monitor/issues), on the original: report a bug or propose a feature that isn't specific to this fork
 - 🔧 Pull requests are welcome: read [`CONTRIBUTING.md`](CONTRIBUTING.md) first for how to start and the checks
-- 🐙 [@renatoaug on GitHub](https://github.com/renatoaug): the maintainer
+- 🐙 [@renatoaug on GitHub](https://github.com/renatoaug): the author of Clauddy; [@JalelTounsi](https://github.com/JalelTounsi) maintains this fork
 
 ## License
 
