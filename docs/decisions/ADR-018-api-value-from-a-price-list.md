@@ -1,6 +1,6 @@
 # ADR-018: The API value comes from a price list in the app
 
-- **Status**: Accepted
+- **Status**: Superseded by ADR-019
 - **Date**: 2026-11-24
 - **Related**: [design/04-usage.md](../design/04-usage.md#api-value), [ADR-001](ADR-001-percent-from-the-account.md)
 

@@ -81,6 +81,7 @@ impl Fx {
         let dir = self.root.path().join("projects").join(project);
         fs::create_dir_all(&dir).unwrap();
         let file = dir.join(name);
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
         fs::write(&file, format!("{}\n", lines.join("\n"))).unwrap();
         file
     }
@@ -268,9 +269,9 @@ fn resolves_a_project_from_another_filesystem_root() {
     let distro = TempDir::new().unwrap();
     std::fs::create_dir_all(distro.path().join("home/u/my-app")).unwrap();
     let mut cache = HashMap::new();
-    assert_eq!(project_label(&mut cache, distro.path(), "-home-u-my-app"), "my-app");
+    assert_eq!(project_of(&mut cache, distro.path(), "-home-u-my-app").label, "my-app");
     // the same name under this machine's root is another project
-    assert_ne!(project_label(&mut cache, Path::new("/"), "-home-u-my-app"), "my-app");
+    assert_ne!(project_of(&mut cache, Path::new("/"), "-home-u-my-app").label, "my-app");
 }
 
 // ---- usage by project ----
@@ -314,6 +315,85 @@ fn a_subdirectory_and_a_git_worktree_count_for_their_repository() {
     assert_eq!(counts(&fx.usage(&budget()).by_project), vec![("gamma", 70), ("notes", 5)]);
 }
 
+#[test]
+fn two_projects_of_the_same_name_stay_two() {
+    let mut fx = Fx::new();
+    let (a, b) = (fx.real_dir("acme/web"), fx.real_dir("globex/web"));
+    fx.write_log_in(&[tok(60)], "session.jsonl", &enc(&a));
+    fx.write_log_in(&[tok(40)], "session.jsonl", &enc(&b));
+    assert_eq!(counts(&fx.usage(&budget()).by_project), vec![("acme/web", 60), ("globex/web", 40)]);
+}
+
+// ---- spans, a project in detail, sessions ----
+
+#[test]
+fn the_lists_cover_today_the_week_and_the_30_days() {
+    let mut fx = Fx::new();
+    let dir = fx.real_dir("spans");
+    fx.write_log_in(&[tok(1), tok_at(3 * DAY, 10), tok_at(20 * DAY, 100)], "session.jsonl", &enc(&dir));
+    let u = fx.usage(&budget());
+    let of = |span: Span| &u.periods[span.index()];
+    assert_eq!([of(Span::Today).tokens, of(Span::Week).tokens, of(Span::Month).tokens], [1, 11, 111]);
+    assert_eq!(counts(&of(Span::Month).by_project), vec![("spans", 111)]);
+    assert_eq!(counts(&of(Span::Today).by_model), vec![("Opus 5", 1)]);
+    // the week's lists are the ones the panel always had
+    assert_eq!(u.by_project, of(Span::Week).by_project);
+}
+
+#[test]
+fn a_project_opens_on_its_models_days_worktrees_and_cache_share() {
+    let mut fx = Fx::new();
+    let a = fx.real_dir("delta");
+    let answer = |model: &str, usage: serde_json::Value| {
+        let n = SEQ.fetch_add(1, Ordering::SeqCst);
+        json!({"type": "assistant", "timestamp": iso(now_ms()), "requestId": format!("req-{n}"), "message": {"id": format!("msg-{n}"), "model": model, "usage": usage}}).to_string()
+    };
+    fx.write_log_in(
+        &[
+            answer("claude-opus-5-5", json!({"input_tokens": 10, "cache_read_input_tokens": 70, "cache_creation_input_tokens": 20, "output_tokens": 5})),
+            tok_at(2 * DAY, 40),
+        ],
+        "session.jsonl",
+        &enc(&a),
+    );
+    fx.write_log_in(
+        &[line(L { tokens: 9, model: Some("claude-sonnet-5-5"), ..Default::default() })],
+        "session.jsonl",
+        &format!("{}--claude-worktrees-fix-login-0a1b2c", enc(&a)),
+    );
+    let u = fx.usage(&budget());
+    let p = &u.periods[Span::Week.index()].projects[0];
+    assert_eq!((p.label.as_str(), p.tokens), ("delta", 154));
+    assert_eq!(counts(&p.by_model), vec![("Opus 5.5", 105), ("Opus 5", 40), ("Sonnet 5.5", 9)]);
+    assert_eq!(counts(&p.worktrees), vec![("main checkout", 145), ("fix-login-0a1b2c", 9)]);
+    // everything sent in: 100 + 40 + 9, of which 70 came from the cache
+    assert_eq!((p.input, p.cache_read), (149, 70));
+    // the last 7 days, oldest first: today is the last, two days ago the fifth
+    assert_eq!(p.days.len(), 7);
+    assert_eq!((p.days[6].tokens, p.days[4].tokens), (114, 40));
+    // a project that used no worktree lists none
+    let lone = fx.real_dir("lone");
+    fx.write_log_in(&[tok(3)], "session.jsonl", &enc(&lone));
+    let u = fx.usage(&budget());
+    assert!(u.periods[Span::Week.index()].projects.iter().find(|p| p.label == "lone").unwrap().worktrees.is_empty());
+}
+
+#[test]
+fn sessions_rank_by_tokens_and_by_value_with_their_subagents() {
+    let mut fx = Fx::new();
+    let dir = fx.real_dir("epsilon");
+    // many cheap tokens against few dear ones
+    fx.write_log_in(&[line(L { tokens: 900, model: Some("claude-haiku-5-5"), ..Default::default() })], "aaa.jsonl", &enc(&dir));
+    fx.write_log_in(&[line(L { tokens: 100, model: Some("claude-fable-5-2"), ..Default::default() })], "bbb.jsonl", &enc(&dir));
+    // a subagent logs under a directory named after its session
+    fx.write_log_in(&[line(L { tokens: 50, model: Some("claude-fable-5-2"), ..Default::default() })], "bbb/subagents/agent-1.jsonl", &enc(&dir));
+    let u = fx.usage(&budget());
+    let week = &u.periods[Span::Week.index()];
+    assert_eq!(week.sessions.iter().map(|s| s.tokens).collect::<Vec<_>>(), [900, 150]);
+    assert_eq!(week.sessions_by_cost.iter().map(|s| s.tokens).collect::<Vec<_>>(), [150, 900]);
+    assert!(week.sessions[0].label.starts_with("epsilon · "), "{}", week.sessions[0].label);
+}
+
 // ---- API value ----
 
 #[test]
@@ -349,6 +429,8 @@ fn tokens_are_priced_at_their_model_and_kind() {
     assert!(near(u.by_project[0].cost, 39.7));
     let cost = |label: &str| u.by_model.iter().find(|r| r.label == label).map(|r| r.cost).unwrap();
     assert!(near(cost("Opus 5.5"), 37.2) && near(cost("Sonnet 5.5"), 2.5) && near(cost("some-other-model"), 0.0));
+    // what has no price is said, not hidden in the total
+    assert_eq!(u.periods[Span::Week.index()].unpriced, m);
 }
 
 #[test]
