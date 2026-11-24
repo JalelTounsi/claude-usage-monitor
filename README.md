@@ -1,90 +1,123 @@
-# <img src="https://github.com/user-attachments/assets/e5487d3e-aadb-466d-bd2b-cfba5476d3db" alt="" width="40" align="top"> Clauddy
+# Clauddy — what your Claude Code usage is worth
 
-A pixel-art desktop pet that keeps an eye on your Claude Code usage: the real session and weekly % from your account, the tokens from your local logs, and a pet that works, sleeps and catches fire along with it. It can follow Codex and Cursor too, and you can dress it as a wizard, a ninja, a pirate or Santa: fourteen pets in all.
+A pixel-art desktop pet that watches your Claude Code usage: the real session and weekly % from your account, the tokens from your local logs, and now **what they would have cost on the API, project by project and session by session**. It follows Codex and Cursor too, and it works, sleeps and catches fire along with you.
 
-This is a fork of [renatoaug/claude-usage-monitor](https://github.com/renatoaug/claude-usage-monitor). On top of the original it adds:
-
-- **What the usage is worth**: tokens / $ switches the counts to what they would have cost on the API, from a price list you can correct in `prices.json`
-- **Projects by repository**: subdirectories and worktrees count for their repository, and a click on a project opens its models, its last 7 days, its worktrees and its cache share
-- **Top sessions and a span**: the five heaviest sessions, over today, 7 days or 30 days
-- **Six more pets**: ninja, pirate, chef, doctor, engineer and a racing driver in a race car
+> This is a fork of [renatoaug/claude-usage-monitor](https://github.com/renatoaug/claude-usage-monitor), the original Clauddy. It keeps everything the original does and adds the API value, per-repository projects, top sessions and six new pets.
 
 <p align="center">
-  <a href="#running">📚 Get started</a> ·
-  <a href="docs/design/02-features.md">✨ Features</a> ·
-  <a href="docs/design/01-architecture.md">🏗️ Architecture</a> ·
-  <a href="docs/design/03-setup.md">⚙️ Setup</a> ·
-  <a href="docs/decisions/">🧭 Decisions</a>
+  <a href="#whats-new-in-this-fork">What's new</a> ·
+  <a href="#install">Install</a> ·
+  <a href="docs/design/02-features.md">Features</a> ·
+  <a href="docs/design/01-architecture.md">Architecture</a> ·
+  <a href="docs/decisions/">Decisions</a>
 </p>
+
+<p align="center">
+  <img src="native/tests/snapshots/expanded-working-details.png" alt="The expanded panel: session, week, products, models, projects and top sessions" width="260">
+  &nbsp;
+  <img src="native/tests/snapshots/compact-trio.png" alt="Compact: Claude, Codex and Cursor side by side" width="260">
+</p>
+
+## What's new in this fork
+
+### What the usage is worth
+
+**tokens / $**, under Details, switches every count to what it would have cost on the API: today, the session, the week, each model, each project, each session. Over 30 days it also reads as a multiple of what the plan costs (`$13.5k · 67× the plan`). The prices are built in (Anthropic for Claude, OpenAI for Codex), and `~/.claude-usage-monitor/prices.json` adds a model or corrects a price without a new build ([usage](docs/design/04-usage.md#api-value), [ADR-018](docs/decisions/ADR-018-api-value-from-a-price-list.md), [ADR-019](docs/decisions/ADR-019-the-price-list-can-be-corrected.md)).
+
+### Projects by repository, and a project in detail
+
+Projects are grouped by repository: a session started in a subdirectory or in a worktree counts for the repository it belongs to, instead of showing up as a project of its own. A click on a project opens it: its models, its last 7 days, its worktrees and how much of what it sent was read from the cache ([usage](docs/design/04-usage.md#projects)).
+
+### Top sessions over a span
+
+**today**, **7 days** or **30 days** sets what the lists cover, and **top sessions** ranks the five heaviest of the span, by tokens or by API value ([usage](docs/design/04-usage.md#spans-a-project-in-detail-sessions)).
+
+| API value | A project in detail |
+|---|---|
+| ![The panel in API dollars](native/tests/snapshots/expanded-details-api-value.png) | ![A project opened: models, days, worktrees, cache](native/tests/snapshots/expanded-project.png) |
+
+### Six more pets
+
+Ninja, pirate, chef, doctor, engineer and a racing driver in a race car join the wizard, the astronaut, the getaway pet and the holiday packs: fourteen pets in all, each with every mood. **⋯ → Change pet** switches at once ([pets](docs/design/06-pets.md)).
+
+<p align="center">
+  <img src="native/tests/snapshots/settings-pet-picker.png" alt="The pet picker with the fourteen pets" width="300">
+</p>
+
+### Updates come from this fork
+
+The update check and `install.sh` read this fork's releases, so accepting an update never replaces it with the original's build.
+
+## What Clauddy does
+
+- **The real limits**: the session and weekly % from your Claude account, with each reset time, a model's own weekly limit and what each product (Claude Code, Cowork, Chats) took of the week
+- **The tokens from your logs**: by model, by project, by day, with a 30-day heat map and the pace you are burning at
+- **A pet with moods**: idle, working at its desk while a turn is open, on fire past 90%, maxed out at 100%, asleep after 5 idle minutes; it speaks up when something changes
+- **Three sizes**: expanded, compact, or just the pet with a speech bubble of your usage; floating or in the menu bar
+- **Alerts**: a notification past a threshold, and a one-shot reminder when the session resets
+- **Codex and Cursor**, when connected, side by side with Claude
+- **Several accounts**, switched from the title band
+
+Everything is in [`docs/design/02-features.md`](docs/design/02-features.md).
 
 https://github.com/user-attachments/assets/036dc92e-44f1-41d0-9463-a52879007e4d
 
-## Stack
+<sub>The video is the original's: it shows the pet, the sizes and the moods, not what this fork adds.</sub>
 
-A native app in Rust with egui, no browser engine: about 1–2% CPU and a 20 MB app. The `clauddy` command on npm is a small launcher that downloads it.
+## Install
 
-More details, with every tool and version, in [`docs/design/01-architecture.md`](docs/design/01-architecture.md#stack).
+This fork has no release of its own yet, so its additions are built from the code. You need [Rust](https://rustup.rs).
 
-## Requirements
+**macOS (Apple Silicon)**, as an app:
+
+```bash
+git clone https://github.com/JalelTounsi/claude-usage-monitor
+```
+
+```bash
+cd claude-usage-monitor/native && scripts/bundle.sh && open target/Clauddy.app
+```
+
+**Windows (x64) and Linux (x64)**, from `native/`:
+
+```bash
+cargo run --release
+```
+
+The original's release, without this fork's additions, runs anywhere with `bunx clauddy` ([Bun](https://bun.sh), or `npx` with Node 18+). [`docs/design/03-setup.md`](docs/design/03-setup.md) has the details for each platform and every setting in `config.json`; its install commands are the original's.
+
+### Requirements
 
 - macOS on Apple Silicon (the first-class build), Windows x64 or Linux x64
 - [Claude Code](https://claude.com/claude-code), whose logs in `~/.claude/projects` give the token counts; a Claude login, done once in Settings, gives the real %
-- [Bun](https://bun.sh), or Node 18+ for `npx`, only to run it with `bunx clauddy`
-- [Rust](https://rustup.rs), only to work on the code
 - Optional: [Codex](https://openai.com/codex) or the [Cursor](https://cursor.com) app on the same machine, to follow them too
 
-## Running
+## Development
 
-This fork has no release of its own yet, so what it adds comes from the code. On macOS, as an app:
-
-```bash
-git clone https://github.com/JalelTounsi/claude-usage-monitor && cd claude-usage-monitor/native
-scripts/bundle.sh && open target/Clauddy.app
-```
-
-On Windows and Linux, `cargo run --release` from `native/`.
-
-The original's released build, without what this fork adds, runs anywhere without installing:
-
-```bash
-bunx clauddy
-```
-
-[`docs/design/03-setup.md`](docs/design/03-setup.md) has Windows and Linux, updating, running from the code and every setting in `config.json`; its install commands are the original's.
-
-## Test
+A native app in Rust with egui, no browser engine: about 1–2% CPU and a 20 MB app ([stack](docs/design/01-architecture.md#stack)).
 
 ```bash
 cd native
-cargo fmt --check                  # formatting
+cargo fmt --check                                     # formatting
 cargo clippy --release --all-targets -- -D warnings   # lint
-cargo test --release               # unit tests and the snapshot gallery
-scripts/bundle.sh                  # builds target/Clauddy.app (macOS)
-CLAUDDY_STATE=fire cargo run --release   # forces a mood: idle, working, fire, tired, sleeping
+cargo test --release                                  # unit tests and the snapshot gallery
+CLAUDDY_STATE=fire cargo run --release                # force a mood: idle, working, fire, tired, sleeping
 ```
 
-The snapshot gallery renders every screen state into `native/tests/snapshots/`; after an intended visual change, `UPDATE_SNAPSHOTS=1 cargo test --release` rewrites it. At the root, `bun run test` tests the npm launcher, and `bun install` turns on a pre-commit hook that formats it. CI runs all of it on every pull request.
+The snapshot gallery renders every screen state into [`native/tests/snapshots/`](native/tests/snapshots/), where every picture in this README comes from; after an intended visual change, `UPDATE_SNAPSHOTS=1 cargo test --release` rewrites it. At the root, `bun run test` tests the npm launcher. Code rules and the checks before a change is done are in [`AGENTS.md`](AGENTS.md); commits follow [Conventional Commits](https://www.conventionalcommits.org).
 
 ## Releases
 
-Every merge to `main` can be a release: [semantic-release](https://semantic-release.gitbook.io) reads the Conventional Commit titles since the last tag (a `feat` bumps the minor, a `fix` or `perf` the patch, `docs` and `chore` nothing), builds the app on macOS, Windows and Linux runners, publishes the GitHub release and `clauddy` on npm. The whole pipeline is in [`docs/design/07-releases.md`](docs/design/07-releases.md).
-
-## Docs
-
-Everything about how Clauddy works, runs and was decided is indexed in [`docs/`](docs/README.md). Code rules and the checks before calling a change done are in [`AGENTS.md`](AGENTS.md).
-
-We follow [Conventional Commits](https://www.conventionalcommits.org).
+A merge to `main` can be a release: [semantic-release](https://semantic-release.gitbook.io) reads the commit titles since the last tag (a `feat` bumps the minor, a `fix` or `perf` the patch), builds the app on macOS, Windows and Linux, and publishes the GitHub release ([`docs/design/07-releases.md`](docs/design/07-releases.md)).
 
 ## Privacy
 
-Everything stays on your machine, in `~/.claude-usage-monitor/`. Nothing leaves it except the OAuth and usage calls to Anthropic and, with Cursor connected, the usage calls to Cursor with the Cursor app's own token. What is kept and what is read: [`docs/design/01-architecture.md`](docs/design/01-architecture.md#data-on-disk).
+Everything stays on your machine, in `~/.claude-usage-monitor/`. Nothing leaves it except the OAuth and usage calls to Anthropic and, with Cursor connected, the usage calls to Cursor with the Cursor app's own token. The API value is computed locally from the built-in price list. What is kept and what is read: [`docs/design/01-architecture.md`](docs/design/01-architecture.md#data-on-disk).
 
-## Community
+## Credits
 
-- 🐛 [GitHub Issues](https://github.com/renatoaug/claude-usage-monitor/issues), on the original: report a bug or propose a feature that isn't specific to this fork
-- 🔧 Pull requests are welcome: read [`CONTRIBUTING.md`](CONTRIBUTING.md) first for how to start and the checks
-- 🐙 [@renatoaug on GitHub](https://github.com/renatoaug): the author of Clauddy; [@JalelTounsi](https://github.com/JalelTounsi) maintains this fork
+Clauddy was created by [@renatoaug](https://github.com/renatoaug): the pet, the app and most of what is here come from [the original](https://github.com/renatoaug/claude-usage-monitor), where bugs and ideas that aren't specific to this fork belong. This fork is maintained by [@JalelTounsi](https://github.com/JalelTounsi). Pull requests are welcome: [`CONTRIBUTING.md`](CONTRIBUTING.md) says how to start.
 
 ## License
 
-Clauddy is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE), like the original.
