@@ -13,16 +13,14 @@ A pixel-art desktop pet that watches your Claude Code usage: the real session an
 </p>
 
 <p align="center">
-  <img src="native/tests/snapshots/expanded-working-details.png" alt="The expanded panel: session, week, products, models, projects and top sessions" width="260">
-  &nbsp;
-  <img src="native/tests/snapshots/compact-trio.png" alt="Compact: Claude, Codex and Cursor side by side" width="260">
+  <img src="native/tests/snapshots/expanded-working-details.png" alt="The expanded panel: session, week, products, models, projects and top sessions" width="300">
 </p>
 
 ## What's new in this fork
 
 ### What the usage is worth
 
-**tokens / $**, under Details, switches every count to what it would have cost on the API: today, the session, the week, each model, each project, each session. Over 30 days it also reads as a multiple of what the plan costs (`$13.5k · 67× the plan`). The prices are built in (Anthropic for Claude, OpenAI for Codex), and `~/.claude-usage-monitor/prices.json` adds a model or corrects a price without a new build ([usage](docs/design/04-usage.md#api-value), [ADR-018](docs/decisions/ADR-018-api-value-from-a-price-list.md), [ADR-019](docs/decisions/ADR-019-the-price-list-can-be-corrected.md)).
+**tokens / $**, under Details, switches every count to what it would have cost on the API: today, the session, the week, each model, each project, each session. Over 30 days it also reads as a multiple of what the plan costs (`$13.5k, 67 times the plan`). The prices are built in (Anthropic for Claude, OpenAI for Codex), and `~/.claude-usage-monitor/prices.json` adds a model or corrects a price without a new build ([usage](docs/design/04-usage.md#api-value), [ADR-018](docs/decisions/ADR-018-api-value-from-a-price-list.md), [ADR-019](docs/decisions/ADR-019-the-price-list-can-be-corrected.md)).
 
 ### Projects by repository, and a project in detail
 
@@ -38,7 +36,7 @@ Projects are grouped by repository: a session started in a subdirectory or in a 
 
 ### Six more pets
 
-Ninja, pirate, chef, doctor, engineer and a racing driver in a race car join the wizard, the astronaut, the getaway pet and the holiday packs: fourteen pets in all, each with every mood. **⋯ → Change pet** switches at once ([pets](docs/design/06-pets.md)).
+Ninja, pirate, chef, doctor, engineer and a racing driver in a race car join the wizard, the astronaut, the getaway pet and the holiday packs: fourteen pets in all, each with every mood. **Change pet**, in the title band's menu, switches at once ([pets](docs/design/06-pets.md)).
 
 <p align="center">
   <img src="native/tests/snapshots/settings-pet-picker.png" alt="The pet picker with the fourteen pets" width="300">
@@ -59,10 +57,6 @@ The update check and `install.sh` read this fork's releases, so accepting an upd
 - **Several accounts**, switched from the title band
 
 Everything is in [`docs/design/02-features.md`](docs/design/02-features.md).
-
-https://github.com/user-attachments/assets/036dc92e-44f1-41d0-9463-a52879007e4d
-
-<sub>The video is the original's: it shows the pet, the sizes and the moods, not what this fork adds.</sub>
 
 ## Install
 
