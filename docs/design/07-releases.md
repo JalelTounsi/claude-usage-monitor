@@ -33,7 +33,7 @@ flowchart LR
 
 1. **version**: lints the launcher, then runs semantic-release as a dry run to compute the next version. With nothing to ship the pipeline stops here.
 2. **build**: one job per platform installs the Rust toolchain (and GTK on Linux, for the tray) and runs `native/scripts/package.sh <version>`, which stamps the version into `native/Cargo.toml`, builds the app and packs it into `dist/`.
-3. **publish**: downloads every artifact and runs semantic-release for real: the tag `vX.Y.Z`, the GitHub Release with the macOS, Windows and Linux files attached, and `clauddy` on npm for `bunx clauddy`.
+3. **publish**: downloads every artifact and runs semantic-release for real: the tag `vX.Y.Z` and the GitHub Release with the macOS, Windows and Linux files attached. This fork does not publish to npm (`npmPublish: false` in `.releaserc.json`): the `clauddy` package belongs to the upstream project.
 
 ## What ships
 

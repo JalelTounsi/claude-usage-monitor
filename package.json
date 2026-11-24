@@ -19,11 +19,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/renatoaug/claude-usage-monitor.git"
+    "url": "git+https://github.com/JalelTounsi/claude-usage-monitor.git"
   },
-  "homepage": "https://github.com/renatoaug/claude-usage-monitor#readme",
+  "homepage": "https://github.com/JalelTounsi/claude-usage-monitor#readme",
   "bugs": {
-    "url": "https://github.com/renatoaug/claude-usage-monitor/issues"
+    "url": "https://github.com/JalelTounsi/claude-usage-monitor/issues"
   },
   "keywords": [
     "claude",
