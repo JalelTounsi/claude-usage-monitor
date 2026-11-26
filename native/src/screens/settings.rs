@@ -20,7 +20,7 @@ use crate::ui::stepper::stepper;
 use crate::ui::surface::card;
 use crate::ui::tag::{TagStyle, tag};
 use crate::ui::text::{bold_mid, text_mid};
-use crate::ui::theme::{color, radius, text};
+use crate::ui::theme::{Theme, color, radius, text};
 use crate::ui::toggle::toggle;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -65,7 +65,7 @@ fn pane_h(tab: Tab, snap: &Snapshot, view: &super::View) -> f32 {
     match tab {
         Tab::Accounts => TILES_H + 10.0 + CONN_H + if login { LOGIN_H } else { 0.0 } + wsl,
         Tab::Alerts => block_h(3) + GAP + block_h(1),
-        Tab::Appearance => block_h(1) + GAP + block_h(4) + GAP + block_h(2),
+        Tab::Appearance => block_h(1) + GAP + block_h(5) + GAP + block_h(2),
     }
 }
 
@@ -83,14 +83,14 @@ pub fn size(snap: &Snapshot, tab: Tab, view: &super::View) -> [f32; 2] {
 pub fn draw(ui: &mut Ui, ctx: &Context, f: &Frame, tab: Tab, draft: &Prefs, saved: &Prefs, code: &mut String) -> Vec<Action> {
     let mut actions = vec![];
     let rect = f.area;
-    card(ui, ctx, f.card);
+    card(ui, ctx, f.card, draft.theme);
     let chip = title_band(ui, ctx, f, rect, &mut actions);
 
     // the settings sheet: its own shade, from the title band to the bottom
     let p = ui.painter().clone();
     let sheet = Rect::from_min_max(Pos2::new(rect.left() + 1.0, rect.top() + BODY_TOP), rect.right_bottom() - Vec2::new(1.0, 1.0));
     let r = radius::CARD - 1;
-    p.rect_filled(sheet, CornerRadius { nw: 0, ne: 0, sw: r, se: r }, color::SETTINGS);
+    p.rect_filled(sheet, CornerRadius { nw: 0, ne: 0, sw: r, se: r }, draft.theme.sheet());
     let (left, right) = (rect.left() + SIDE, rect.right() - SIDE);
     let mut y = sheet.top() + 12.0;
 
@@ -410,7 +410,7 @@ fn pet_modal(ui: &Ui, ctx: &Context, f: &Frame, area: Rect, draft: &Prefs, actio
     let _ = click_area(ui, area, "pet-modal-scrim");
 
     let panel = Rect::from_center_size(area.center(), Vec2::new(area.width() - 2.0 * MODAL_MARGIN, modal_h()));
-    p.rect(panel, CornerRadius::same(radius::CARD), color::SETTINGS, Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
+    p.rect(panel, CornerRadius::same(radius::CARD), draft.theme.sheet(), Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
     let _ = click_area(ui, panel, "pet-modal");
     let (left, right) = (panel.left() + MODAL_PAD, panel.right() - MODAL_PAD);
     bold_mid(p, left, panel.top() + MODAL_HEAD / 2.0, Align::Min, "Choose a pet", text::BODY, color::FG);
@@ -428,6 +428,39 @@ fn pet_modal(ui: &Ui, ctx: &Context, f: &Frame, area: Rect, draft: &Prefs, actio
     if close || outside {
         actions.push(Action::TogglePetPicker);
     }
+}
+
+/// The theme row: its name, and a swatch per theme on the right. Applied as
+/// you pick, so the card previews it before Save.
+fn theme_picker(ui: &Ui, p: &eframe::egui::Painter, left: f32, right: f32, mid: f32, chosen: Theme) -> Option<Theme> {
+    let label = row_label(p, left, mid, "Theme", false);
+    text_mid(p, label.right() + 6.0, mid, Align::Min, chosen.label(), text::SMALL, color::FG_MUTED);
+    const SIDE: f32 = 14.0;
+    const GAP_X: f32 = 6.0;
+    let mut picked = None;
+    let n = Theme::ALL.len() as f32;
+    let x0 = right - 10.0 - n * SIDE - (n - 1.0) * GAP_X;
+    for (i, theme) in Theme::ALL.into_iter().enumerate() {
+        let r = Rect::from_min_size(Pos2::new(x0 + i as f32 * (SIDE + GAP_X), mid - SIDE / 2.0), Vec2::splat(SIDE));
+        let resp = click_area(ui, r.expand(2.0), ("theme", theme.key())).on_hover_text(theme.label());
+        let w = SIDE / 3.0;
+        for (k, c) in theme.swatch().into_iter().enumerate() {
+            let stripe = Rect::from_min_size(r.min + Vec2::new(k as f32 * w, 0.0), Vec2::new(w, SIDE));
+            p.rect_filled(stripe, CornerRadius::ZERO, c);
+        }
+        let ring = if theme == chosen {
+            color::TILE_EDGE_ON
+        } else if resp.hovered() {
+            color::WASH_EDGE.gamma_multiply(3.0)
+        } else {
+            color::FIELD_EDGE
+        };
+        p.rect_stroke(r, CornerRadius::same(radius::TAG), Stroke::new(1.0, ring), StrokeKind::Outside);
+        if resp.clicked() && theme != chosen {
+            picked = Some(theme);
+        }
+    }
+    picked
 }
 
 // Appearance: what the native app can't change yet is shown, faded.
@@ -452,7 +485,11 @@ fn appearance(ui: &Ui, f: &Frame, left: f32, right: f32, y: f32, draft: &Prefs, 
     let below = gy + row;
 
     let gy = group_label(&p, left, below + GAP, "display");
-    let rows = group(&p, left, right, gy, 4);
+    let rows = group(&p, left, right, gy, 5);
+    if let Some(theme) = theme_picker(ui, &p, left, right, rows[0], draft.theme) {
+        actions.push(Action::EditPrefs(Prefs { theme, ..draft.clone() }));
+    }
+    let rows = &rows[1..];
     row_label(&p, left, rows[0], "Lives in", false);
     let seg = Rect::from_min_size(Pos2::new(right - 10.0 - 140.0, rows[0] - 12.0), Vec2::new(140.0, 24.0));
     if let Some(i) = segmented(ui, seg, "lives-in", &["Floating", "Menu bar"], draft.menu_bar as usize, text::SMALL, &[]) {
@@ -476,7 +513,7 @@ fn appearance(ui: &Ui, f: &Frame, left: f32, right: f32, y: f32, draft: &Prefs, 
         actions.push(Action::EditPrefs(Prefs { plan_price: draft.plan_price + 20 * d, ..draft.clone() }.clamped()));
     }
 
-    let gy = group_label(&p, left, gy + 4.0 * row + GAP, "voice");
+    let gy = group_label(&p, left, gy + 5.0 * row + GAP, "voice");
     let rows = group(&p, left, right, gy, 2);
     row_label(&p, left, rows[0], "Speech bubbles", false);
     if toggle(ui, right - 10.0, rows[0], "talk", draft.talk, true).clicked() {

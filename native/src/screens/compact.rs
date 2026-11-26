@@ -87,7 +87,7 @@ pub fn draw(ui: &Ui, ctx: &Context, f: &Frame) -> Vec<Action> {
     let mut actions = vec![];
     let rows = rows(f);
     let rect = f.area;
-    card(ui, ctx, f.card);
+    card(ui, ctx, f.card, f.theme);
     let p = ui.painter();
 
     // title band: the account, then ⋯, pet-only, expand and close
@@ -138,7 +138,7 @@ pub fn draw(ui: &Ui, ctx: &Context, f: &Frame) -> Vec<Action> {
             if let Some(week) = service_row(p, f.logos, at, content.right() - col_left, row, row.provider == selected)
                 && ui.interact(week, ui.scope_id().with(("week", row.provider.name())), Sense::hover()).hovered()
             {
-                week_tag(ui, week, f.card, row.week_reset_ms);
+                week_tag(ui, week, f.card, row.week_reset_ms, f.theme);
             }
         } else {
             service_row_skeleton(p, f.logos, at, content.right() - col_left, row.provider);
@@ -163,7 +163,7 @@ pub fn draw(ui: &Ui, ctx: &Context, f: &Frame) -> Vec<Action> {
 
 /// The week's small tag over its %, while hovered: "week · resets Sat
 /// 3:27 PM", in the menus' colours, kept inside the card.
-fn week_tag(ui: &Ui, week: Rect, card: Rect, reset_ms: Option<i64>) {
+fn week_tag(ui: &Ui, week: Rect, card: Rect, reset_ms: Option<i64>, theme: crate::ui::theme::Theme) {
     let p = ui.ctx().layer_painter(LayerId::new(Order::Tooltip, ui.scope_id().with("week-tag")));
     let label = match reset_ms {
         Some(ms) => format!("week · resets {}", clock(ms)),
@@ -173,7 +173,7 @@ fn week_tag(ui: &Ui, week: Rect, card: Rect, reset_ms: Option<i64>) {
     let size = galley.size() + Vec2::new(10.0, 5.0);
     let x = (week.center().x - size.x / 2.0).clamp(card.left() + 4.0, card.right() - 4.0 - size.x);
     let tag = Rect::from_min_size(Pos2::new(x, week.top() - size.y - 1.0), size);
-    p.rect(tag, radius::CONTROL, color::MENU, Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
+    p.rect(tag, radius::CONTROL, theme.menu(), Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
     p.galley(tag.center() - galley.size() / 2.0, galley, color::FG_LABEL);
 }
 

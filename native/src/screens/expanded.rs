@@ -297,7 +297,7 @@ pub fn draw(ui: &mut Ui, ctx: &Context, f: &Frame, code: &mut String) -> Vec<Act
     let empty = crate::usage::Usage::empty();
     let svc = service(f.snap, shown(f), &empty, f.api_value);
     let rect = f.area;
-    card_tinted(ui, ctx, f.card, svc.provider.surface());
+    card_tinted(ui, ctx, f.card, svc.provider.surface(), f.theme);
     let (left, right) = (rect.left() + SIDE, rect.right() - SIDE);
     let p = ui.painter().clone();
     let p = &p;
@@ -501,7 +501,7 @@ pub fn band_overlays(ui: &Ui, ctx: &Context, f: &Frame, rect: Rect, chip: Rect, 
 /// The ⋯ menu under its button. A click anywhere else closes it.
 pub fn more_menu_overlay(ui: &Ui, ctx: &Context, f: &Frame, button: Rect, top_right: Pos2, actions: &mut Vec<Action>) {
     let open = f.view.more_menu;
-    match more_menu(ui, ctx, top_right, open, &f.update) {
+    match more_menu(ui, ctx, top_right, open, &f.update, f.theme) {
         Some(pick) => {
             actions.push(Action::CloseMoreMenu);
             actions.push(match pick {
@@ -533,7 +533,7 @@ pub fn account_menu_overlay(ui: &Ui, ctx: &Context, f: &Frame, rect: Rect, chip:
     }
     let at = Pos2::new(rect.left() + 8.0, rect.top() + 33.0);
     let menu = menu_rect(at, f.snap.accounts.len());
-    match account_menu(ui, at, &f.snap.accounts, &f.snap.active, f.view.pending_remove.as_deref()) {
+    match account_menu(ui, at, &f.snap.accounts, &f.snap.active, f.view.pending_remove.as_deref(), f.theme) {
         Some(MenuPick::Switch(id)) => actions.push(Action::SwitchAccount(id)),
         Some(MenuPick::AskRemove(id)) => actions.push(Action::AskRemoveAccount(id)),
         Some(MenuPick::Remove(id)) => actions.push(Action::RemoveAccount(id)),

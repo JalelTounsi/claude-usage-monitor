@@ -32,7 +32,7 @@ flowchart LR
 | `src/voice.rs`, `src/talk.rs` | The pet's remarks and blips, and when it says them |
 | `src/updates.rs` | The release check and the installer |
 
-The theme (`ui/theme.rs`) keeps the raw palette private; everything else uses semantic names, and a test fails on a raw colour anywhere else.
+The theme (`ui/theme.rs`) keeps the raw palette private; everything else uses semantic names, and a test fails on a raw colour anywhere else. The panel's own colours (card, glow, menus, settings sheet) also depend on the chosen `Theme`, which the screens get in `Frame` ([ADR-020](../decisions/ADR-020-a-theme-repaints-the-panel-only.md)).
 
 ## The window on macOS
 

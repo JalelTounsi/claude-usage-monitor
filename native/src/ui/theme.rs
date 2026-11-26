@@ -92,6 +92,21 @@ mod palette {
     // the night sky behind the expanded pet
     pub const NIGHT_CLOUD: Color32 = rgb(0x3a3a3a);
     pub const NIGHT_STAR: Color32 = rgb(0xd8d8d8);
+    // the themes' panels: card, menu, settings sheet
+    pub const GRAPHITE_900: Color32 = rgb(0x1c1c1e);
+    pub const GRAPHITE_850: Color32 = rgb(0x212124);
+    pub const GRAPHITE_700: Color32 = rgb(0x2c2c30);
+    pub const NAVY_900: Color32 = rgb(0x141a26);
+    pub const NAVY_850: Color32 = rgb(0x18202e);
+    pub const NAVY_700: Color32 = rgb(0x222b3c);
+    pub const MOSS_850: Color32 = rgb(0x1f2620);
+    pub const MOSS_700: Color32 = rgb(0x29322a);
+    pub const PLUM_900: Color32 = rgb(0x221823);
+    pub const PLUM_850: Color32 = rgb(0x281c29);
+    pub const PLUM_700: Color32 = rgb(0x342536);
+    pub const INK_900: Color32 = rgb(0x0c0c0d);
+    pub const INK_850: Color32 = rgb(0x121213);
+    pub const INK_700: Color32 = rgb(0x1e1e20);
 }
 
 /// Semantic colours: what a colour is for, not what it looks like.
@@ -249,6 +264,87 @@ pub mod color {
     pub const STAR: Color32 = NIGHT_STAR;
 }
 
+/// The panel's colours, picked in Settings → Appearance. `Service` is the
+/// original look: each service tints the panel its own way.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Theme {
+    #[default]
+    Service,
+    Graphite,
+    Night,
+    Moss,
+    Plum,
+    Ink,
+}
+
+/// One theme's panel: the card, its glow, a menu, the settings sheet.
+pub struct Panel {
+    pub surface: Color32,
+    pub glow: Color32,
+    pub menu: Color32,
+    pub sheet: Color32,
+}
+
+impl Theme {
+    pub const ALL: [Theme; 6] = [Theme::Service, Theme::Graphite, Theme::Night, Theme::Moss, Theme::Plum, Theme::Ink];
+
+    /// how config.json names it
+    pub fn key(self) -> &'static str {
+        match self {
+            Theme::Service => "service",
+            Theme::Graphite => "graphite",
+            Theme::Night => "night",
+            Theme::Moss => "moss",
+            Theme::Plum => "plum",
+            Theme::Ink => "ink",
+        }
+    }
+
+    /// an unknown name reads as the original look
+    pub fn from_key(key: &str) -> Self {
+        Theme::ALL.into_iter().find(|t| t.key() == key).unwrap_or_default()
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Theme::Service => "By service",
+            Theme::Graphite => "Graphite",
+            Theme::Night => "Night",
+            Theme::Moss => "Moss",
+            Theme::Plum => "Plum",
+            Theme::Ink => "Ink",
+        }
+    }
+
+    /// The fixed panel, or None when each service tints it.
+    pub fn panel(self) -> Option<Panel> {
+        use palette::*;
+        let panel = |surface, glow, menu, sheet| Some(Panel { surface, glow, menu, sheet });
+        match self {
+            Theme::Service => None,
+            Theme::Graphite => panel(GRAPHITE_900, rgba(0x10, 0x10, 0x12, 0x20), GRAPHITE_700, GRAPHITE_850),
+            Theme::Night => panel(NAVY_900, rgba(0x08, 0x0c, 0x16, 0x22), NAVY_700, NAVY_850),
+            Theme::Moss => panel(MOSS_900, color::SURFACE_WARM_CODEX, MOSS_700, MOSS_850),
+            Theme::Plum => panel(PLUM_900, rgba(0x12, 0x08, 0x12, 0x22), PLUM_700, PLUM_850),
+            Theme::Ink => panel(INK_900, rgba(0x06, 0x06, 0x06, 0x14), INK_700, INK_850),
+        }
+    }
+
+    /// The swatch in Settings, in three stripes: the card's colour three
+    /// times, or each service's own for `Service`.
+    pub fn swatch(self) -> [Color32; 3] {
+        self.panel().map_or([color::SURFACE, color::SURFACE_CODEX, color::SURFACE_CURSOR], |p| [p.surface; 3])
+    }
+
+    pub fn menu(self) -> Color32 {
+        self.panel().map_or(color::MENU, |p| p.menu)
+    }
+
+    pub fn sheet(self) -> Color32 {
+        self.panel().map_or(color::SETTINGS, |p| p.sheet)
+    }
+}
+
 /// Mix two colours, `t` of the way from `a` to `b` (premultiplied mix linearly).
 pub fn mix(a: Color32, b: Color32, t: f32) -> Color32 {
     let t = t.clamp(0.0, 1.0);
@@ -289,6 +385,16 @@ pub fn install_font(ctx: &egui::Context) {
 
 #[cfg(test)]
 mod tests {
+    use super::Theme;
+
+    #[test]
+    fn a_theme_reads_back_from_its_key() {
+        for t in Theme::ALL {
+            assert_eq!(Theme::from_key(t.key()), t);
+        }
+        assert_eq!(Theme::from_key("neon"), Theme::Service);
+    }
+
     // The only place a raw colour may appear is this file.
     #[test]
     fn no_raw_colour_outside_the_theme() {

@@ -160,6 +160,8 @@ pub struct Frame<'a> {
     pub api_value: bool,
     /// what the plan costs a month, as set in Settings (0 = not set)
     pub plan_price: i32,
+    /// the panel's colours
+    pub theme: crate::ui::theme::Theme,
     /// what the pet is saying, and how far it has appeared (0..1)
     pub bubble: Option<(&'a str, f32)>,
     /// where the update check stands

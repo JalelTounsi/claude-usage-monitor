@@ -31,10 +31,17 @@ pub fn account_label(a: &Account, index: usize) -> String {
     a.label.clone().unwrap_or_else(|| format!("Account {}", index + 1))
 }
 
-pub fn account_menu(ui: &Ui, top_left: Pos2, accounts: &[Account], active: &str, pending_remove: Option<&str>) -> Option<MenuPick> {
+pub fn account_menu(
+    ui: &Ui,
+    top_left: Pos2,
+    accounts: &[Account],
+    active: &str,
+    pending_remove: Option<&str>,
+    theme: crate::ui::theme::Theme,
+) -> Option<MenuPick> {
     let rect = menu_rect(top_left, accounts.len());
     let p = ui.painter();
-    p.rect(rect, CornerRadius::same(radius::CONTROL), color::MENU, Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
+    p.rect(rect, CornerRadius::same(radius::CONTROL), theme.menu(), Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
     // the menu swallows clicks that miss its rows
     let _ = click_area(ui, rect, "account-menu");
 

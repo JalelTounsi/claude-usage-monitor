@@ -35,6 +35,8 @@ pub struct Prefs {
     /// what the plan costs a month, in USD, to compare the API value with
     /// (0 = not set: only a plan with one price is known)
     pub plan_price: i32,
+    /// the panel's colours
+    pub theme: crate::ui::theme::Theme,
 }
 
 impl Default for Prefs {
@@ -55,6 +57,7 @@ impl Default for Prefs {
             pet: crate::components::skins::DEFAULT.into(),
             api_value: false,
             plan_price: 0,
+            theme: crate::ui::theme::Theme::Service,
         }
     }
 }
@@ -88,6 +91,7 @@ impl Prefs {
             plan_price: v["planPrice"].as_f64().map(|p| p.round() as i32).unwrap_or(d.plan_price),
             muted_until: v["soundMutedUntil"].as_f64().unwrap_or(0.0) as i64,
             zoom: v["zoom"].as_f64().map(|z| z.round() as i32).unwrap_or(d.zoom),
+            theme: crate::ui::theme::Theme::from_key(v["theme"].as_str().unwrap_or("")),
         }
         .clamped()
     }
@@ -121,6 +125,7 @@ impl Prefs {
         v["pet"] = json!(self.pet);
         v["apiValue"] = json!(self.api_value);
         v["planPrice"] = json!(self.plan_price);
+        v["theme"] = json!(self.theme.key());
         v["mode"] = json!(if self.menu_bar { "menubar" } else { "floating" });
         for (key, on) in [("codex", self.codex), ("cursor", self.cursor), ("wsl", self.wsl)] {
             if !v[key].is_object() {
@@ -165,8 +170,10 @@ mod tests {
                 pet: "clauddy".into(),
                 api_value: false,
                 plan_price: 0,
+                theme: crate::ui::theme::Theme::Service,
             }
         );
+        assert_eq!(Prefs::from_value(&json!({"theme": "plum"})).theme, crate::ui::theme::Theme::Plum);
         assert_eq!(Prefs::from_value(&json!({"pet": "wizard"})).pet, "wizard");
         assert!(Prefs::from_value(&json!({"codex": {"enabled": true}})).codex);
         assert!(Prefs::from_value(&json!({"cursor": {"enabled": true}})).cursor);

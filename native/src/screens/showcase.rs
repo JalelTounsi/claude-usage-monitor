@@ -77,6 +77,7 @@ fn frame<'a>(s: &'a Shot, pet: &'a Pet, logos: &'a Logos, area: Rect) -> Frame<'
         heads_up: 80.0,
         api_value: false,
         plan_price: 0,
+        theme: Default::default(),
         bubble: s.bubble.as_ref().map(|(t, a)| (t.as_str(), *a)),
         update: Default::default(),
     }

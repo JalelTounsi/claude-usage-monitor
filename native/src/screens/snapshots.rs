@@ -163,6 +163,7 @@ fn render_inner(case: Case, draft: Prefs) {
             heads_up: 80.0,
             api_value: case.name.ends_with("-api-value"),
             plan_price: 200,
+            theme: draft.theme,
             bubble: case
                 .name
                 .ends_with("-talking")
@@ -204,6 +205,7 @@ fn render_inner(case: Case, draft: Prefs) {
             heads_up: 80.0,
             api_value: case.name.ends_with("-api-value"),
             plan_price: 200,
+            theme: draft.theme,
             bubble: case
                 .name
                 .ends_with("-talking")
@@ -398,6 +400,32 @@ fn settings_alerts_with_an_unsaved_edit() {
 fn settings_appearance() {
     let snap = snapshot(usage(false, None), Some(limits(42.0, 68.0)));
     render(Case { name: "settings-appearance", snap, mood: Mood::Idle, view: settings_view(settings::Tab::Appearance) });
+}
+
+// the themes: one panel each, the picker with one chosen
+fn themed(name: &'static str, view: View, theme: crate::ui::theme::Theme) {
+    let case = Case { name, snap: snapshot(usage(false, None), Some(limits(42.0, 68.0))), mood: Mood::Idle, view };
+    render_with(case, Prefs { theme, ..Prefs::default() });
+}
+
+#[test]
+fn expanded_theme_graphite() {
+    themed("expanded-theme-graphite", View::default(), crate::ui::theme::Theme::Graphite);
+}
+
+#[test]
+fn expanded_theme_plum() {
+    themed("expanded-theme-plum", View::default(), crate::ui::theme::Theme::Plum);
+}
+
+#[test]
+fn compact_theme_night() {
+    themed("compact-theme-night", compact_view(), crate::ui::theme::Theme::Night);
+}
+
+#[test]
+fn settings_appearance_theme_ink() {
+    themed("settings-appearance-theme-ink", settings_view(settings::Tab::Appearance), crate::ui::theme::Theme::Ink);
 }
 
 fn pet_only_view() -> View {
@@ -906,6 +934,7 @@ fn pet_only_glance_button_stays_out_on_the_way_to_it() {
             heads_up: 80.0,
             api_value: false,
             plan_price: 0,
+            theme: Default::default(),
             bubble: None,
             update: Default::default(),
         };

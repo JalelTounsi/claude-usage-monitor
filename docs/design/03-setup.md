@@ -76,6 +76,7 @@ Settings saved from the UI live in `~/.claude-usage-monitor/config.json`, so the
   "zoom": 100, // widget scale %, 100 to 200
   "apiValue": false, // the tokens read in dollars, at API list prices
   "planPrice": 0, // what the plan costs a month in USD, to set the API value against (0 = not set)
+  "theme": "service", // the panel's colours: "service" (each service its own), "graphite", "night", "moss", "plum", "ink"
   "pet": "clauddy", // the chosen pet (native/src/components/skins.rs); holidays override it on their days
   "pollIntervalMs": 4000, // how often the local logs are read
   "activeThresholdMs": 20000, // fallback "active" window, for a log whose tail does not say whether a turn is open

@@ -43,6 +43,10 @@ Everything is in tokens and percent by default. **tokens / $** under Details (or
 
 Switching takes effect at once, with no restart.
 
+### Themes
+
+**⚙ Settings → Appearance → Theme** picks the panel's colours, one swatch each: **By service** (the default: clay for Claude, green-grey for Codex, steel blue for Cursor), **Graphite**, **Night**, **Moss**, **Plum** and **Ink**. A fixed theme paints the card, its glow, the menus and the settings sheet the same whatever the service; the text, the bars, the logos and the pet keep their colours, since every theme is dark ([ADR-020](../decisions/ADR-020-a-theme-repaints-the-panel-only.md)). A pick shows on the card at once and is kept on Save (`theme` in `config.json`).
+
 ## Moods
 
 | | | |

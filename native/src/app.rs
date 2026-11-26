@@ -644,7 +644,7 @@ impl eframe::App for App {
             } else {
                 crate::ui::surface::Tint::Claude
             };
-            crate::ui::surface::card_backdrop(ui.painter(), card, tint);
+            crate::ui::surface::card_backdrop(ui.painter(), card, tint, self.prefs.theme);
         }
         if fade < 1.0 {
             ui.multiply_opacity(fade);
@@ -706,6 +706,7 @@ impl eframe::App for App {
             heads_up: self.prefs.heads_up.min(self.prefs.near_limit) as f64,
             api_value: self.prefs.api_value,
             plan_price: self.prefs.plan_price,
+            theme: self.prefs.theme,
             bubble,
             update: self.updater.state(),
         };

@@ -62,7 +62,7 @@ pub fn menu_rect(top_right: Pos2, update: &Update) -> Rect {
 
 /// The menu, dropping in while `open` and fading out after; returns what
 /// was picked.
-pub fn more_menu(ui: &Ui, ctx: &Context, top_right: Pos2, open: bool, update: &Update) -> Option<MorePick> {
+pub fn more_menu(ui: &Ui, ctx: &Context, top_right: Pos2, open: bool, update: &Update, theme: crate::ui::theme::Theme) -> Option<MorePick> {
     let raw = ctx.animate_bool_with_time(ui.scope_id().with("more-menu-open"), open, OPEN_S);
     if raw <= 0.0 {
         return None;
@@ -82,7 +82,7 @@ pub fn more_menu(ui: &Ui, ctx: &Context, top_right: Pos2, open: bool, update: &U
             color::MENU_SHADOW.gamma_multiply(a),
         );
     }
-    p.rect(rect, CornerRadius::same(radius::CONTROL + 2), color::MENU, Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
+    p.rect(rect, CornerRadius::same(radius::CONTROL + 2), theme.menu(), Stroke::new(1.0, color::MENU_EDGE), StrokeKind::Inside);
     let live = open && raw > 0.6;
     if live {
         // the menu swallows clicks that miss its rows

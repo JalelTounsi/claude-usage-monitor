@@ -64,3 +64,4 @@ The first records were written after the fact, from the code and the pull reques
 | [ADR-017](ADR-017-linux-opens-on-xwayland.md) | On Linux, a Wayland session opens the window on XWayland | Accepted |
 | [ADR-018](ADR-018-api-value-from-a-price-list.md) | The API value comes from a price list in the app | Superseded by ADR-019 |
 | [ADR-019](ADR-019-the-price-list-can-be-corrected.md) | The price list ships in the app and a file can correct it | Accepted |
+| [ADR-020](ADR-020-a-theme-repaints-the-panel-only.md) | A theme repaints the panel, not the palette | Accepted |
