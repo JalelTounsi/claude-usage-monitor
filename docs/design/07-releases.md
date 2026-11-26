@@ -4,6 +4,8 @@ How a merge becomes a release: the version, the builds on each platform, and wha
 
 ## Overview
 
+> **Paused (2026-11-26):** `.github/workflows/release.yml` is removed, so a push to `main` publishes nothing. The app is built from source with `native/scripts/bundle.sh`. What follows describes how releases worked until then.
+
 Every merge to `main` runs `.github/workflows/release.yml`. [semantic-release](https://semantic-release.gitbook.io) reads the Conventional Commit titles since the last tag and decides whether there is something to ship and which version it is. Nothing is done by hand.
 
 | Title type | Release |

@@ -8,7 +8,7 @@ Clauddy is a pixel-art desktop pet that tracks Claude Code usage: the real sessi
 - `bin/clauddy.js` — the npm launcher: downloads the release build for the OS into `~/.claude-usage-monitor/bin/<version>/` and starts it ([ADR-014](docs/decisions/ADR-014-npm-launches-the-native-app.md)); `test/launcher.test.js` is its test
 - `install.sh` — the macOS installer (latest release into `/Applications`)
 - `tools/showcase/` — the README's product video: a HyperFrames composition over clips the app draws frame by frame (`native/src/screens/showcase.rs`); its README says how to render it
-- `.github/workflows/` — `pull_request.yml` (launcher lint and test, native build on 3 OS, fmt, tests on macOS), `snapshots.yml` (renders the gallery for a pull request whose macOS check failed on it, then comments or, if asked, commits it) and `release.yml`
+- `.github/workflows/` — `pull_request.yml` (launcher lint and test, native build on 3 OS, fmt, tests on macOS), `snapshots.yml` (renders the gallery for a pull request whose macOS check failed on it, then comments or, if asked, commits it); there is no release workflow any more (removed until the Claudia rename settles how the app is installed)
 
 ## Commands
 
@@ -29,7 +29,7 @@ bun run check      # Biome format + lint (autofix)
 bun run test       # the launcher's test
 ```
 
-> Each platform's app is built on its own runner. `release.yml` handles that in three stages: `version` (semantic-release dry-run) → `build` (matrix on macOS/Windows/Linux, each running `native/scripts/package.sh` with the computed version) → `publish` (downloads every artifact and runs semantic-release for real). Details in [`docs/design/07-releases.md`](docs/design/07-releases.md), [ADR-010](docs/decisions/ADR-010-build-on-each-platform.md) and [ADR-012](docs/decisions/ADR-012-the-native-app-replaces-electron.md).
+> Releases are paused: `release.yml` is removed, nothing is published on a push to `main`, and the app is built from source with `scripts/bundle.sh`. It used to build each platform on its own runner in three stages: `version` (semantic-release dry-run) → `build` (matrix on macOS/Windows/Linux, each running `native/scripts/package.sh` with the computed version) → `publish` (downloads every artifact and runs semantic-release for real). Details in [`docs/design/07-releases.md`](docs/design/07-releases.md), [ADR-010](docs/decisions/ADR-010-build-on-each-platform.md) and [ADR-012](docs/decisions/ADR-012-the-native-app-replaces-electron.md).
 
 ## Native app (Rust)
 
