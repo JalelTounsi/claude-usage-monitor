@@ -10,32 +10,24 @@ use crate::ui::theme::color;
 pub enum Provider {
     #[default]
     Claude,
-    Codex,
-    Cursor,
 }
 
 impl Provider {
     pub fn name(self) -> &'static str {
         match self {
             Provider::Claude => "Claude",
-            Provider::Codex => "Codex",
-            Provider::Cursor => "Cursor",
         }
     }
     /// The service's own usage page, which ⋯ → Usage page opens.
     pub fn usage_page(self) -> &'static str {
         match self {
             Provider::Claude => "https://claude.ai/settings/usage",
-            Provider::Codex => "https://chatgpt.com/usage#settings/Usage",
-            Provider::Cursor => "https://cursor.com/dashboard?tab=usage",
         }
     }
     /// The logo tint on a selected row and in the activity line.
     pub fn tint(self) -> Color32 {
         match self {
             Provider::Claude => color::CLAUDE,
-            Provider::Codex => color::CODEX,
-            Provider::Cursor => color::CURSOR,
         }
     }
     /// The panel's shade while it shows this service.
@@ -43,8 +35,6 @@ impl Provider {
         use crate::ui::surface::Tint;
         match self {
             Provider::Claude => Tint::Claude,
-            Provider::Codex => Tint::Codex,
-            Provider::Cursor => Tint::Cursor,
         }
     }
 
@@ -52,15 +42,11 @@ impl Provider {
     pub fn bar(self) -> Color32 {
         match self {
             Provider::Claude => color::CLAUDE_BAR,
-            Provider::Codex => color::CODEX_BAR,
-            Provider::Cursor => color::CURSOR_BAR,
         }
     }
     fn svg(self) -> &'static str {
         match self {
             Provider::Claude => include_str!("../../assets/logos/claude.svg"),
-            Provider::Codex => include_str!("../../assets/logos/openai.svg"),
-            Provider::Cursor => include_str!("../../assets/logos/cursor.svg"),
         }
     }
 }
@@ -74,7 +60,7 @@ const PX: u32 = 64;
 
 impl Logos {
     pub fn load(ctx: &egui::Context) -> Self {
-        let textures = [Provider::Claude, Provider::Codex, Provider::Cursor]
+        let textures = [Provider::Claude]
             .into_iter()
             .map(|p| {
                 let tree = resvg::usvg::Tree::from_str(p.svg(), &resvg::usvg::Options::default()).expect("embedded logo");
@@ -101,9 +87,7 @@ mod tests {
     use super::Provider;
 
     #[test]
-    fn each_service_opens_its_own_usage_page() {
+    fn claude_opens_its_usage_page() {
         assert!(Provider::Claude.usage_page().starts_with("https://claude.ai/"));
-        assert!(Provider::Codex.usage_page().starts_with("https://chatgpt.com/"));
-        assert!(Provider::Cursor.usage_page().starts_with("https://cursor.com/"));
     }
 }

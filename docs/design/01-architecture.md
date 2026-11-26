@@ -10,18 +10,14 @@ Clauddy is one native app, in Rust, in `native/` ([ADR-012](../decisions/ADR-012
 flowchart LR
     logs[("~/.claude/projects<br/>session logs")] -- "reads" --> usage["usage.rs"]
     api[("Anthropic usage API")] -- "OAuth" --> auth["auth.rs"]
-    codexlogs[("~/.codex/sessions<br/>+ codex app-server")] -- "reads" --> codex["codex.rs"]
-    cursorapp[("Cursor app login<br/>+ dashboard API")] -- "reads" --> cursor["cursor.rs"]
     usage --> poller["poller.rs<br/>poll, alerts, reminders"]
     auth --> poller
-    codex --> poller
-    cursor --> poller
     poller -- "Snapshot" --> app["app.rs<br/>window, tray"]
     app -- "Command" --> poller
     poller -- "writes" --> data[("~/.claude-usage-monitor/")]
 ```
 
-The **percentages** come from each service's own account ([usage](04-usage.md)). The **token counts**, breakdowns and activity come from local logs. Every reading stays on the machine. The threads, the screens and the window on macOS are in [the native app](08-native.md).
+The **percentages** come from the Claude account ([usage](04-usage.md)). The **token counts**, breakdowns and activity come from local logs. Every reading stays on the machine. The threads, the screens and the window on macOS are in [the native app](08-native.md).
 
 ## Stack
 

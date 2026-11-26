@@ -24,11 +24,6 @@ mod palette {
 
     pub const CLAY_900: Color32 = rgb(0x221913);
     pub const MOSS_900: Color32 = rgb(0x1b211c);
-    pub const STEEL_900: Color32 = rgb(0x1a1d23);
-    pub const MOSS_HEAT_1: Color32 = rgb(0x3a503b);
-    pub const MOSS_HEAT_2: Color32 = rgb(0x5b7655);
-    pub const MOSS_HEAT_3: Color32 = rgb(0x8d9f72);
-    pub const MOSS_HEAT_4: Color32 = rgb(0xc2c994);
     pub const CLAY_EDGE: Color32 = rgba(0x1d, 0x17, 0x11, 0x20);
     pub const NIGHT_900: Color32 = rgb(0x0f1210);
     pub const SAND_50: Color32 = rgb(0xeeeae5);
@@ -78,10 +73,6 @@ mod palette {
     pub const TAN_WASH: Color32 = rgba(1, 1, 0, 10);
     pub const STONE_300: Color32 = rgb(0xc2b4a6);
     pub const STONE_400: Color32 = rgb(0xb6a99c);
-    pub const SAGE_300: Color32 = rgb(0xb9c8b0);
-    pub const SAGE_400: Color32 = rgb(0xa7baa1);
-    pub const SKY_300: Color32 = rgb(0xb8c4dc);
-    pub const SKY_400: Color32 = rgb(0x9fb2d6);
     pub const HEAT_1: Color32 = rgb(0x6b4430);
     pub const HEAT_2: Color32 = rgb(0x9c6340);
     pub const HEAT_3: Color32 = rgb(0xcf8b52);
@@ -118,12 +109,6 @@ pub mod color {
     pub const SURFACE: Color32 = CLAY_900;
     /// the glow's heart: warm, a little translucent, fading to nothing
     pub const SURFACE_WARM: Color32 = rgba(0x16, 0x0c, 0x06, 0x24);
-    /// the panel while it shows Codex: a green-grey shade and a sage glow
-    pub const SURFACE_CODEX: Color32 = MOSS_900;
-    pub const SURFACE_WARM_CODEX: Color32 = rgba(0x0c, 0x0f, 0x0b, 0x1c);
-    /// the panel while it shows Cursor: a steel-blue shade and glow
-    pub const SURFACE_CURSOR: Color32 = STEEL_900;
-    pub const SURFACE_WARM_CURSOR: Color32 = rgba(0x0a, 0x0c, 0x0f, 0x1c);
     pub const BORDER: Color32 = CLAY_EDGE;
     pub const PANE: Color32 = NIGHT_900;
     pub const PANE_EDGE: Color32 = white(6);
@@ -189,8 +174,6 @@ pub mod color {
     pub const TILE_EDGE_ON: Color32 = white(56);
     // a connection card: the service's avatar, its caption, the way out
     pub const AVATAR_CLAUDE: Color32 = rgba(0x14, 0x0b, 0x08, 0x18);
-    pub const AVATAR_CODEX: Color32 = rgba(0x0d, 0x0e, 0x0c, 0x14);
-    pub const AVATAR_CURSOR: Color32 = rgba(0x0c, 0x0d, 0x10, 0x14);
     pub const CAPTION: Color32 = SAND_550;
     pub const REMOVE: Color32 = SAND_525;
     pub const REMOVE_HOVER: Color32 = CORAL_100;
@@ -240,22 +223,13 @@ pub mod color {
     pub const CLAUDE: Color32 = CORAL_400;
     pub const CLAUDE_WORKING: Color32 = CORAL_450;
     pub const CLAUDE_BAR: Color32 = CORAL_500;
-    pub const CODEX: Color32 = SAGE_300;
-    pub const CODEX_BAR: Color32 = SAGE_400;
-    pub const CURSOR: Color32 = SKY_300;
-    pub const CURSOR_BAR: Color32 = SKY_400;
 
     // the 30-day map, idle to busiest; the breakdown rows' dots
     pub const HEAT: [Color32; 5] = [rgba(13, 13, 13, 13), HEAT_1, HEAT_2, HEAT_3, HEAT_4];
-    pub const HEAT_CODEX: [Color32; 5] = [rgba(13, 13, 13, 13), MOSS_HEAT_1, MOSS_HEAT_2, MOSS_HEAT_3, MOSS_HEAT_4];
     // the service tabs: a tinted plate on the chosen one
     pub const TAB_EDGE: Color32 = white(18);
     pub const TAB_CLAUDE: Color32 = rgba(0x18, 0x0d, 0x09, 0x1c);
     pub const TAB_CLAUDE_EDGE: Color32 = rgba(0x46, 0x31, 0x24, 0x51);
-    pub const TAB_CODEX: Color32 = rgba(0x12, 0x14, 0x11, 0x1c);
-    pub const TAB_CODEX_EDGE: Color32 = rgba(0x32, 0x38, 0x30, 0x4d);
-    pub const TAB_CURSOR: Color32 = rgba(0x11, 0x13, 0x17, 0x1c);
-    pub const TAB_CURSOR_EDGE: Color32 = rgba(0x30, 0x34, 0x3c, 0x4d);
     pub const DOTS: [Color32; 4] = [CORAL_500, DOT_2, DOT_3, DOT_N];
 
     // the night sky
@@ -264,8 +238,8 @@ pub mod color {
     pub const STAR: Color32 = NIGHT_STAR;
 }
 
-/// The panel's colours, picked in Settings → Appearance. `Service` is the
-/// original look: each service tints the panel its own way.
+/// The panel's colours, picked in Settings → Appearance. `Service` (kept
+/// under that name in `config.json`) is the original clay look.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Theme {
     #[default]
@@ -307,7 +281,7 @@ impl Theme {
 
     pub fn label(self) -> &'static str {
         match self {
-            Theme::Service => "By service",
+            Theme::Service => "Clay",
             Theme::Graphite => "Graphite",
             Theme::Night => "Night",
             Theme::Moss => "Moss",
@@ -316,7 +290,7 @@ impl Theme {
         }
     }
 
-    /// The fixed panel, or None when each service tints it.
+    /// The fixed panel, or None for the original clay one.
     pub fn panel(self) -> Option<Panel> {
         use palette::*;
         let panel = |surface, glow, menu, sheet| Some(Panel { surface, glow, menu, sheet });
@@ -324,16 +298,15 @@ impl Theme {
             Theme::Service => None,
             Theme::Graphite => panel(GRAPHITE_900, rgba(0x10, 0x10, 0x12, 0x20), GRAPHITE_700, GRAPHITE_850),
             Theme::Night => panel(NAVY_900, rgba(0x08, 0x0c, 0x16, 0x22), NAVY_700, NAVY_850),
-            Theme::Moss => panel(MOSS_900, color::SURFACE_WARM_CODEX, MOSS_700, MOSS_850),
+            Theme::Moss => panel(MOSS_900, rgba(0x0c, 0x0f, 0x0b, 0x1c), MOSS_700, MOSS_850),
             Theme::Plum => panel(PLUM_900, rgba(0x12, 0x08, 0x12, 0x22), PLUM_700, PLUM_850),
             Theme::Ink => panel(INK_900, rgba(0x06, 0x06, 0x06, 0x14), INK_700, INK_850),
         }
     }
 
-    /// The swatch in Settings, in three stripes: the card's colour three
-    /// times, or each service's own for `Service`.
+    /// The swatch in Settings, in three stripes: the card's colour three times.
     pub fn swatch(self) -> [Color32; 3] {
-        self.panel().map_or([color::SURFACE, color::SURFACE_CODEX, color::SURFACE_CURSOR], |p| [p.surface; 3])
+        [self.panel().map_or(color::SURFACE, |p| p.surface); 3]
     }
 
     pub fn menu(self) -> Color32 {

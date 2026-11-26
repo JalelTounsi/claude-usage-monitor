@@ -11,7 +11,6 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use crate::components::logos::Provider;
 use crate::components::pet::Mood;
 use crate::format::{clock, countdown, tokens};
 use crate::poller::Snapshot;
@@ -24,8 +23,6 @@ const STREAK: i64 = 90 * MIN;
 const STREAK_GAP: i64 = 10 * MIN;
 /// a longer gap between polls is the machine asleep, not work
 const TALLY_GAP: i64 = 15_000;
-/// a Codex or Cursor reading this old says nothing new
-const STALE: i64 = 15 * MIN;
 
 /// A remark to show: the line, whether it may jump the queue (and blip),
 /// and its tone.
@@ -88,7 +85,6 @@ pub struct Talk {
     last_remark: Option<i64>,
     greeted: bool,
     last_live: Option<f64>,
-    last_ext: [Option<f64>; 2],
     away_ms: i64,
     was_sleeping: bool,
     streak_from: Option<i64>,
@@ -114,7 +110,6 @@ impl Talk {
             last_remark: None,
             greeted: false,
             last_live: None,
-            last_ext: [None, None],
             away_ms: 0,
             was_sleeping: false,
             streak_from: None,
@@ -132,48 +127,6 @@ impl Talk {
         }
         self.last_remark = Some(now);
         true
-    }
-
-    // Codex and Cursor, whichever tab is on screen. A stale reading keeps the
-    // baseline: the next fresh one is compared with the last number seen.
-    fn listen_ext(&mut self, seen: &Seen, now: i64) -> Option<Remark> {
-        let dur = |ms: i64| countdown(ms);
-        for (i, provider) in [Provider::Codex, Provider::Cursor].into_iter().enumerate() {
-            let (session, limits_at) = match provider {
-                Provider::Codex => match &seen.snap.codex {
-                    Some(c) => (c.session.clone(), c.limits_at),
-                    None => (None, None),
-                },
-                _ => match &seen.snap.cursor {
-                    Some(c) => (c.session.clone(), c.limits_at),
-                    None => (None, None),
-                },
-            };
-            let on = match provider {
-                Provider::Codex => seen.snap.codex.is_some(),
-                _ => seen.snap.cursor.is_some(),
-            };
-            if !on {
-                self.last_ext[i] = None;
-                continue;
-            }
-            let Some(w) = session else { continue };
-            let Some(pct) = w.pct else { continue };
-            if limits_at.is_none_or(|t| now - t > STALE) {
-                continue;
-            }
-            let Some(was) = self.last_ext[i].replace(pct) else { continue };
-            let name = provider.name();
-            if was - pct > 25.0 {
-                let span = if provider == Provider::Cursor { "month" } else { "window" };
-                return remark(voice::ext_reset(was, name, span), true, Tone::Normal);
-            } else if was < 100.0 && pct >= 100.0 {
-                return remark(voice::ext_maxed(w.reset_ms.map(clock).as_deref(), name), false, Tone::Sleepy);
-            } else if was < seen.fire && pct >= seen.fire && pct < 100.0 {
-                return remark(voice::ext_fire(pct, w.reset_ms, &dur, name), true, Tone::Fire);
-            }
-        }
-        None
     }
 
     fn note_session(&mut self, seen: &Seen, now: i64) {
@@ -215,10 +168,6 @@ impl Talk {
                 }
             }
         }
-        if let Some(r) = self.listen_ext(seen, now) {
-            out = Some(r);
-        }
-
         match seen.claude {
             Some((pct, reset)) => {
                 let was = self.last_live.replace(pct);

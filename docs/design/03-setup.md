@@ -76,13 +76,11 @@ Settings saved from the UI live in `~/.claude-usage-monitor/config.json`, so the
   "zoom": 100, // widget scale %, 100 to 200
   "apiValue": false, // the tokens read in dollars, at API list prices
   "planPrice": 0, // what the plan costs a month in USD, to set the API value against (0 = not set)
-  "theme": "service", // the panel's colours: "service" (each service its own), "graphite", "night", "moss", "plum", "ink"
+  "theme": "service", // the panel's colours: "service" (Clay, the original), "graphite", "night", "moss", "plum", "ink"
   "pet": "clauddy", // the chosen pet (native/src/components/skins.rs); holidays override it on their days
   "pollIntervalMs": 4000, // how often the local logs are read
   "activeThresholdMs": 20000, // fallback "active" window, for a log whose tail does not say whether a turn is open
   "sleepThresholdMs": 300000, // "sleeping" after this much idle time (5 min)
-  "codex": { "enabled": false }, // set by Settings → Accounts → Codex
-  "cursor": { "enabled": false }, // set by Settings → Accounts → Cursor
   "talk": true, // speech bubbles
   "sound": false, // chiptune blips, opt-in
   "soundMutedUntil": 0 // muted until this epoch ms

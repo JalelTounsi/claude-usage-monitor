@@ -1,6 +1,6 @@
 # Usage
 
-Where every number comes from: the Claude account and its local logs, several subscriptions, Codex, Cursor, how old a reading may be, and the burn-rate projection.
+Where every number comes from: the Claude account and its local logs, several subscriptions, and the burn-rate projection. Clauddy follows Claude only ([PDR-001](../decisions/PDR-001-claude-only.md)).
 
 ## Two sources, two jobs
 
@@ -28,18 +28,15 @@ Under **Details**, Claude's lists cover one span, picked on the panel and rememb
 - **By project**: a click on a row opens the lists on that project: its models over the span, its last 7 days one by one (whatever the span), its worktrees (its own checkout among them, when it used any) and the share of what it sent that was read from the cache (cache reads over every token sent in: fresh input, cache writes and cache reads). **all projects** goes back. Only the ranked projects open, not the folded `other` row.
 - **Top sessions**: the five heaviest sessions of the span, each named after its project and when it started. A session is one log file with the subagents that log under its directory. In tokens they rank by tokens, in dollars by API value: the two orders differ, a long session on a cheap model against a short one on a dear model.
 
-Codex has the week's two lists only.
-
 ### API value
 
 Switched on, the token counts read in dollars: today, the session, the week, each model's week, the lists (ranked by value) and the 30 days. It is what those tokens would have cost on the API at list prices, whatever the plan; a subscription pays none of it ([ADR-019](../decisions/ADR-019-the-price-list-can-be-corrected.md)). Three ways to switch: **tokens / $** beside the span under Details, a click on today's tokens in the status line, or **⚙ Settings → Appearance → Usage in API dollars** (`apiValue` in `config.json`).
 
 Each answer in the logs is priced when it is read (`pricing.rs`): input, output, cache reads and cache writes (5-minute writes at 1.25× the input price, 1-hour writes at 2×, from `usage.cache_creation`) at its model's price per million tokens. Not counted: the Batch discount, fast mode's premium, and the higher prices of long prompts.
 
-- **The price list** is compiled in: Anthropic's for Claude, OpenAI's standard tier for Codex (matched on the exact model id, so a model missing from OpenAI's page is not priced as the one its name starts with). `~/.claude-usage-monitor/prices.json` adds to it or corrects it, read once at launch: `{"claude-opus-5-5": {"input": 4, "output": 20, "cacheRead": 0.2}}`, USD per million tokens, the name matched as a part of the model id, the longest name first; a `cacheRead` left out is a tenth of the input.
+- **The price list** is compiled in: Anthropic's. `~/.claude-usage-monitor/prices.json` adds to it or corrects it, read once at launch: `{"claude-opus-5-5": {"input": 4, "output": 20, "cacheRead": 0.2}}`, USD per million tokens, the name matched as a part of the model id, the longest name first; a `cacheRead` left out is a tenth of the input.
 - **A model with no price** adds its tokens and no dollars, and the panel says how many tokens that is (`N tokens of unlisted models have no price`) instead of letting the total undercount in silence.
 - **Against the plan**: the 30 days read `$13.5k · 67× the plan` when the plan's monthly price is known: the one set in **⚙ Settings → Appearance → Plan price** (`planPrice`), else Pro's $20. Max comes at several prices, so it is never guessed.
-- **Codex** is priced from its rollouts' running totals by kind (`input_tokens`, of which `cached_input_tokens`, and `output_tokens`), on the model in effect, and reads in dollars once one of its models has a price. Cursor reports no tokens, so it has no value.
 
 On Windows, Claude Code run inside WSL keeps its logs in the distro's home, out of Windows' sight. **⚙ Settings → Accounts → Claude → Claude Code in WSL** (off by default, Windows only, [ADR-015](../decisions/ADR-015-wsl-logs-are-opt-in.md)) makes the default account also read `\\wsl.localhost\<distro>\home\*\.claude\projects` (and `/root`'s) of every **running** distro, found with `wsl.exe --list --running` once a minute on a thread of its own, so a slow answer never holds up a poll (`platform/wsl.rs`). Those logs sit behind 9P, under 1 ms a directory, so they are walked whole once a minute; in between, a poll lists only the projects, walks again the ones whose directory changed (a new session) and re-reads the size of the logs written in the last half hour (a turn going on). A long-quiet log that grows again (a resumed session) counts from the next whole walk. A stopped distro is never opened, since that would boot it: its tokens drop out of the counts until it runs again. Project names from WSL resolve against the distro's own `/`.
 
@@ -54,35 +51,6 @@ A personal Pro and a work Max, say. The **account chip** in the top-left corner 
 - The widget follows **one account at a time**: its % is shown, its logs are counted, and only it can notify.
 - Each account keeps its own token and its own armed alerts, so switching never replays a notification dismissed elsewhere. Position, mode, zoom and thresholds are shared.
 - **×** on a row deletes that account's token. The active account and the last one left cannot be removed.
-
-## Codex
-
-[Codex](https://openai.com/codex) (the CLI and the desktop app) is opt-in ([ADR-004](../decisions/ADR-004-codex-and-cursor-are-opt-in.md)): **⚙ Settings → Accounts → Codex → Connect** looks for a Codex session on this computer and starts if it finds one. There is nothing to log into: Codex writes its tokens to `~/.codex/sessions` (or `$CODEX_HOME`) and Clauddy only reads them. The % comes from whichever is newer, those logs or Codex's own app-server, asked every 2 minutes ([ADR-011](../decisions/ADR-011-codex-limits-from-the-app-server.md)).
-
-With more than one service connected, **tabs under the pet** pick which one the panel shows; the other tab keeps its % and gets a **!** past an alert threshold. Minimized, the ring becomes one line per service.
-
-- **The % follows the whole plan.** The limits are shared with other ChatGPT products, such as Dot, that do not write these logs; the app-server sees that spending. Clauddy starts the desktop app's bundled CLI, or `codex` from the PATH.
-- **Without the app-server, the % moves only while Codex runs.** An app-server that can't be started or answers with an error leaves the logs and the last good reading, shown with its age (`read 1h 30m ago`) and a dotted usage bar. A window that reset since then shows **—**, never a made-up 0%.
-- **Tokens and history cover local sessions only**: products that write no logs add to the % and not to the token counts.
-- **No burn rate and no activity scenes**: the logs do not carry enough to draw them honestly.
-- A plan with only a weekly window shows one weekly meter.
-
-**×** on the Codex card stops monitoring; the Codex login and logs are untouched.
-
-## Cursor
-
-[Cursor](https://cursor.com) is opt-in too: **⚙ Settings → Accounts → Cursor → Connect** needs the Cursor app signed in on this computer. Clauddy reads the app's session token from its local storage and asks the endpoints the cursor.com dashboard uses, every 5 minutes.
-
-- **Its budget is monthly.** The tab shows **this month · included** and **API models**, both resetting on the billing date; there is no 5-hour or weekly window.
-- **Activity scenes work**: the agent writes a transcript of every tool call under `~/.cursor/projects`.
-- **No tokens**: neither source reports them, so there are no breakdowns or 30-day map.
-- **The endpoints are unofficial.** If Cursor changes them, the tab shows the last reading with its age until Clauddy is updated.
-
-**×** on the Cursor card stops monitoring; the Cursor app and its login are untouched.
-
-## Old readings
-
-A Codex reading older than 15 minutes, or one whose window has expired, counts as stale: it is shown with its age and a dotted bar, and it never sets the pet's mood. An expired reading is never replaced with zero. The 15 minutes suit the 5-hour window; a weekly-only Codex plan moves slowly, so its reading is often right while marked stale.
 
 ## Burn rate
 

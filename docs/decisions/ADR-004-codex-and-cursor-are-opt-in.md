@@ -1,6 +1,6 @@
 # ADR-004: Codex and Cursor are opt-in and read-only
 
-- **Status**: Accepted
+- **Status**: Superseded by [PDR-001](PDR-001-claude-only.md)
 - **Date**: 2026-09-22
 - **Related**: [design/04-usage.md](../design/04-usage.md#codex), [design/04-usage.md](../design/04-usage.md#cursor)
 

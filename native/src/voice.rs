@@ -243,29 +243,6 @@ pub fn recap(r: &Recap, fmt: Fmt, dur: Dur) -> Line {
     line(format!("{text}."), format!("Fresh window! {} last time.", fmt(r.tokens)))
 }
 
-// Codex and Cursor speak through the same pet, so their lines say whose they are
-pub fn ext_fire(pct: f64, reset_ms: Option<i64>, dur: Dur, name: &str) -> Line {
-    let p = pct.round();
-    let text = match reset_ms {
-        Some(r) => format!("{name} is at {p}% now. It resets in {}.", dur(r)),
-        None => format!("{name} is at {p}% now."),
-    };
-    line(text, format!("{name} at {p}%!"))
-}
-
-pub fn ext_maxed(reset_at: Option<&str>, name: &str) -> Line {
-    let text = match reset_at {
-        Some(at) => format!("{name} is maxed out. It's back at {at}."),
-        None => format!("{name} is maxed out."),
-    };
-    line(text, format!("{name} is maxed out."))
-}
-
-/// Cursor's window is its billing month.
-pub fn ext_reset(was: f64, name: &str, span: &str) -> Line {
-    line(format!("{name} has a fresh {span}! The last one closed at {}%.", was.round()), format!("{name}: fresh {span}!"))
-}
-
 pub fn maxed(reset_at: Option<&str>) -> Line {
     match reset_at {
         Some(at) => line(format!("That's the limit. I'll be back at {at}."), format!("Maxed out till {at}.")),
@@ -397,13 +374,5 @@ mod tests {
         let short = Recap { was: 92.0, tokens: 5_000_000, active_ms: 30_000, top: Some("nope".into()) };
         assert_eq!(recap(&short, &fmt, &dur).text, "Fresh window! That was 5M tokens.");
         assert_eq!(recap(&Recap { was: 92.0, ..Default::default() }, &fmt, &dur).text, "Fresh window! The last one closed at 92%.");
-    }
-
-    #[test]
-    fn codex_and_cursor_lines_say_whose_they_are() {
-        assert_eq!(ext_fire(91.2, Some(3_600_000), &dur, "Codex"), line("Codex is at 91% now. It resets in 60m.", "Codex at 91%!"));
-        assert_eq!(ext_maxed(Some("14:35"), "Codex").text, "Codex is maxed out. It's back at 14:35.");
-        assert_eq!(ext_reset(88.0, "Codex", "window"), line("Codex has a fresh window! The last one closed at 88%.", "Codex: fresh window!"));
-        assert_eq!(ext_reset(90.0, "Cursor", "month").text, "Cursor has a fresh month! The last one closed at 90%.");
     }
 }

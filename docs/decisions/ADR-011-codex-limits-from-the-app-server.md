@@ -1,6 +1,6 @@
 # ADR-011: Codex limits come from its app-server
 
-- **Status**: Accepted
+- **Status**: Superseded by [PDR-001](PDR-001-claude-only.md)
 - **Date**: 2026-11-03
 - **Related**: [design/04-usage.md](../design/04-usage.md#codex), [ADR-004](ADR-004-codex-and-cursor-are-opt-in.md), [ADR-007](ADR-007-a-deadline-is-not-a-new-budget.md)
 

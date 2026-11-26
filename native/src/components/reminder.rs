@@ -22,19 +22,12 @@ pub const ERROR_FOR: Duration = Duration::from_secs(6);
 
 /// Whether the button shows for this service, and if so whether it's on.
 pub fn state(snap: &Snapshot, provider: Provider, claude: Option<(f64, Option<i64>)>, heads_up: f64) -> Option<bool> {
-    let armed =
-        snap.reminders.iter().any(|r| r.provider == provider && (provider != Provider::Claude || r.key == crate::reminders::key(provider, &snap.active)));
+    let armed = snap.reminders.iter().any(|r| r.provider == provider && r.key == crate::reminders::key(provider, &snap.active));
     if armed {
         return Some(true);
     }
-    let now = crate::usage::now_ms();
-    let ext = |w: Option<&crate::codex::Window>, at: Option<i64>| {
-        (w.and_then(|w| w.pct), w.and_then(|w| w.reset_ms), at.is_some_and(|t| now - t < FRESH.as_millis() as i64))
-    };
     let (pct, reset, fresh) = match provider {
         Provider::Claude => (claude.map(|s| s.0), claude.and_then(|s| s.1), snap.limits_at.is_some_and(|t| t.elapsed() < FRESH)),
-        Provider::Codex => snap.codex.as_ref().map_or((None, None, false), |c| ext(c.session.as_ref(), c.limits_at)),
-        Provider::Cursor => snap.cursor.as_ref().map_or((None, None, false), |c| ext(c.session.as_ref(), c.limits_at)),
     };
     (fresh && reset.is_some_and(|r| r > 0) && pct.is_some_and(|p| p >= heads_up)).then_some(false)
 }

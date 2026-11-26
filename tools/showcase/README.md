@@ -22,9 +22,8 @@ A short, music-only product video: an HTML composition animated with GSAP and re
 | 50.5–57s | The holidays' pets: Santa, Reindeer, Gingerbread, Pumpkin |
 | 57–63.5s | Moods: working, on fire, sleeping |
 | 63.5–76.5s | The voice: four remarks in the speech bubble, from the wizard |
-| 76.5–82.5s | Claude, Codex and Cursor, the wizard at the desk |
-| 82.5–89.5s | Details: by model, by project, 30 days |
-| 89.5–100s | Outro: `bunx clauddy` |
+| 76.5–83.5s | Details: by model, by project, 30 days |
+| 83.5–94s | Outro: `bunx clauddy` |
 
 The timeline in `index.html` is written from the hook at 0 and shifted 2s at the end (`tl.shiftChildren`) to make room for the opening; the `data-start` attributes carry the real times.
 

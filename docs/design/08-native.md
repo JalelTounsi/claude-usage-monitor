@@ -8,8 +8,8 @@ One window, drawn immediately by egui, and one background thread that reads ever
 
 ```mermaid
 flowchart LR
-    logs["~/.claude, ~/.codex, ~/.cursor"] --> poller
-    api["Claude, Cursor APIs<br/>codex app-server"] --> poller
+    logs["~/.claude"] --> poller
+    api["Anthropic usage API"] --> poller
     poller["poller thread<br/>(poller.rs)"] -- "Snapshot" --> app["App<br/>(app.rs)"]
     app -- "Frame" --> screens["screens/"]
     screens -- "Action" --> app
@@ -17,7 +17,7 @@ flowchart LR
     poller --> notes["notifications"]
 ```
 
-- **The poller** (`poller.rs`) reads the Claude logs (`usage.rs`), the account's % (`auth.rs`), Codex (`codex.rs`) and Cursor (`cursor.rs`), checks the alerts (`alerts.rs`) and the reset reminders (`reminders.rs`), and publishes a `Snapshot`. Commands from the window (switch account, log in, save settings, arm a reminder) reach it over a channel and are answered at once, followed by a fresh poll.
+- **The poller** (`poller.rs`) reads the Claude logs (`usage.rs`), the account's % (`auth.rs`), checks the alerts (`alerts.rs`) and the reset reminders (`reminders.rs`), and publishes a `Snapshot`. Commands from the window (switch account, log in, save settings, arm a reminder) reach it over a channel and are answered at once, followed by a fresh poll.
 - **The app** (`app.rs`) holds what is on screen: the size, the open tab, the settings draft, the speech bubble. Each frame it builds a `Frame` from the latest snapshot and hands it to the screen.
 - **The screens** (`screens/`) draw only from the `Frame` and return `Action`s for the app to apply. They never read the poller, the disk or the clock on their own, which is what lets the snapshot gallery render every state from fixtures.
 

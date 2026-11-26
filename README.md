@@ -1,6 +1,6 @@
 # Clauddy — what your Claude Code usage is worth
 
-A pixel-art desktop pet that watches your Claude Code usage: the real session and weekly % from your account, the tokens from your local logs, and now **what they would have cost on the API, project by project and session by session**. It follows Codex and Cursor too, and it works, sleeps and catches fire along with you.
+A pixel-art desktop pet that watches your Claude Code usage: the real session and weekly % from your account, the tokens from your local logs, and now **what they would have cost on the API, project by project and session by session**. It works, sleeps and catches fire along with you.
 
 > This is a fork of [renatoaug/claude-usage-monitor](https://github.com/renatoaug/claude-usage-monitor), the original Clauddy. It keeps everything the original does and adds the API value, per-repository projects, top sessions and six new pets.
 
@@ -20,7 +20,7 @@ A pixel-art desktop pet that watches your Claude Code usage: the real session an
 
 ### What the usage is worth
 
-**tokens / $**, under Details, switches every count to what it would have cost on the API: today, the session, the week, each model, each project, each session. Over 30 days it also reads as a multiple of what the plan costs (`$13.5k, 67 times the plan`). The prices are built in (Anthropic for Claude, OpenAI for Codex), and `~/.claude-usage-monitor/prices.json` adds a model or corrects a price without a new build ([usage](docs/design/04-usage.md#api-value), [ADR-018](docs/decisions/ADR-018-api-value-from-a-price-list.md), [ADR-019](docs/decisions/ADR-019-the-price-list-can-be-corrected.md)).
+**tokens / $**, under Details, switches every count to what it would have cost on the API: today, the session, the week, each model, each project, each session. Over 30 days it also reads as a multiple of what the plan costs (`$13.5k, 67 times the plan`). The prices are built in (Anthropic's), and `~/.claude-usage-monitor/prices.json` adds a model or corrects a price without a new build ([usage](docs/design/04-usage.md#api-value), [ADR-018](docs/decisions/ADR-018-api-value-from-a-price-list.md), [ADR-019](docs/decisions/ADR-019-the-price-list-can-be-corrected.md)).
 
 ### Projects by repository, and a project in detail
 
@@ -53,7 +53,6 @@ The update check and `install.sh` read this fork's releases, so accepting an upd
 - **A pet with moods**: idle, working at its desk while a turn is open, on fire past 90%, maxed out at 100%, asleep after 5 idle minutes; it speaks up when something changes
 - **Three sizes**: expanded, compact, or just the pet with a speech bubble of your usage; floating or in the menu bar
 - **Alerts**: a notification past a threshold, and a one-shot reminder when the session resets
-- **Codex and Cursor**, when connected, side by side with Claude
 - **Several accounts**, switched from the title band
 
 Everything is in [`docs/design/02-features.md`](docs/design/02-features.md).
@@ -84,7 +83,6 @@ The original's release, without this fork's additions, runs anywhere with `bunx 
 
 - macOS on Apple Silicon (the first-class build), Windows x64 or Linux x64
 - [Claude Code](https://claude.com/claude-code), whose logs in `~/.claude/projects` give the token counts; a Claude login, done once in Settings, gives the real %
-- Optional: [Codex](https://openai.com/codex) or the [Cursor](https://cursor.com) app on the same machine, to follow them too
 
 ## Development
 

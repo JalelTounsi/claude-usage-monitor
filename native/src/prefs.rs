@@ -14,10 +14,6 @@ pub struct Prefs {
     pub fire: i32,
     /// floating on the desktop, or in the menu bar
     pub menu_bar: bool,
-    /// Codex tracked alongside Claude
-    pub codex: bool,
-    /// Cursor tracked alongside Claude
-    pub cursor: bool,
     /// Windows: also read Claude Code's logs inside running WSL distros (opt-in)
     pub wsl: bool,
     /// the widget's scale, 100-200 %
@@ -47,8 +43,6 @@ impl Default for Prefs {
             near_limit: 95,
             fire: 90,
             menu_bar: false,
-            codex: false,
-            cursor: false,
             wsl: false,
             zoom: 100,
             talk: true,
@@ -81,8 +75,6 @@ impl Prefs {
             near_limit: pct(t.and_then(|a| a.get(1)).and_then(Value::as_i64), d.near_limit),
             fire: pct(v["fireThreshold"].as_i64(), d.fire),
             menu_bar: v["mode"].as_str() == Some("menubar"),
-            codex: v.pointer("/codex/enabled").and_then(Value::as_bool).unwrap_or(false),
-            cursor: v.pointer("/cursor/enabled").and_then(Value::as_bool).unwrap_or(false),
             wsl: v.pointer("/wsl/enabled").and_then(Value::as_bool).unwrap_or(false),
             talk: v["talk"].as_bool() != Some(false),
             pet: v["pet"].as_str().unwrap_or(crate::components::skins::DEFAULT).to_string(),
@@ -127,12 +119,10 @@ impl Prefs {
         v["planPrice"] = json!(self.plan_price);
         v["theme"] = json!(self.theme.key());
         v["mode"] = json!(if self.menu_bar { "menubar" } else { "floating" });
-        for (key, on) in [("codex", self.codex), ("cursor", self.cursor), ("wsl", self.wsl)] {
-            if !v[key].is_object() {
-                v[key] = json!({});
-            }
-            v[key]["enabled"] = json!(on);
+        if !v["wsl"].is_object() {
+            v["wsl"] = json!({});
         }
+        v["wsl"]["enabled"] = json!(self.wsl);
     }
 
     pub fn save(&self) {
@@ -160,8 +150,6 @@ mod tests {
                 near_limit: 90,
                 fire: 85,
                 menu_bar: false,
-                codex: false,
-                cursor: false,
                 wsl: false,
                 zoom: 100,
                 talk: true,
@@ -175,8 +163,6 @@ mod tests {
         );
         assert_eq!(Prefs::from_value(&json!({"theme": "plum"})).theme, crate::ui::theme::Theme::Plum);
         assert_eq!(Prefs::from_value(&json!({"pet": "wizard"})).pet, "wizard");
-        assert!(Prefs::from_value(&json!({"codex": {"enabled": true}})).codex);
-        assert!(Prefs::from_value(&json!({"cursor": {"enabled": true}})).cursor);
         assert!(Prefs::from_value(&json!({"wsl": {"enabled": true}})).wsl);
         assert!(!Prefs::default().wsl);
         assert!(Prefs::from_value(&json!({"apiValue": true})).api_value);

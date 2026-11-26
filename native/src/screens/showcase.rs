@@ -9,7 +9,7 @@
 use eframe::egui::{self, Rect, Vec2};
 use egui_kittest::Harness;
 
-use super::snapshots::{freeze_clock, limits, snapshot, usage, with_codex, with_cursor};
+use super::snapshots::{freeze_clock, limits, snapshot, usage};
 use super::{Frame, Size, View, compact, expanded, pet_only, settings};
 use crate::auth::Limits;
 use crate::components::logos::Logos;
@@ -215,11 +215,6 @@ fn showcase() {
         Shot { pet: "wizard", bubble: Some((text.into(), shown)), ..shot(snap(mood == Mood::Working, limits(pct, 41.0)), mood, View::default()) }
     });
 
-    // Claude, Codex and Cursor
-    record("trio", secs(6.5), 3.0, |_| Shot {
-        pet: "wizard",
-        ..shot(with_cursor(with_codex(snap(false, limits(63.0, 41.0)), false), true), Mood::Working, compact_view())
-    });
     // where the week went
     record("details", secs(7.5), 2.5, |_| shot(working(), Mood::Working, View { details: true, ..View::default() }));
 }

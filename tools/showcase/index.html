@@ -52,7 +52,7 @@
 <body>
 <div id="root" data-composition-id="root" data-width="1920" data-height="1080">
   <!-- biome-ignore lint/a11y/useMediaCaption: background music, nothing to caption -->
-  <audio id="music" src="assets/music.wav" data-start="0" data-duration="100" data-volume="0.9"></audio>
+  <audio id="music" src="assets/music.wav" data-start="0" data-duration="94" data-volume="0.9"></audio>
 
   <!-- 0-2 the opening card: whole from the first frame, so a player's preview and a file's thumbnail show it -->
   <div class="clip" id="s0" data-start="0" data-duration="2">
@@ -94,7 +94,6 @@
     </div>
     <div id="s2f" style="position:absolute;left:0;right:0;top:820px;display:flex;justify-content:center;gap:22px">
       <span class="feat" data-en="&lt;i&gt;%&lt;/i&gt;Real % from your account"><i>%</i>% real da sua conta</span>
-      <span class="feat" data-en="&lt;i&gt;✦&lt;/i&gt;Claude, Codex and Cursor"><i>✦</i>Claude, Codex e Cursor</span>
       <span class="feat" data-en="&lt;i&gt;✿&lt;/i&gt;Pets to pick from"><i>✿</i>Bichinhos pra escolher</span>
       <span class="feat" data-en="&lt;i&gt;♥&lt;/i&gt;Free and open source"><i>♥</i>Grátis e open source</span>
     </div>
@@ -215,20 +214,8 @@
     <div class="lab big-lab talk-lab" id="t4" data-en="&lt;span&gt;And a nudge to take a break&lt;/span&gt;"><span>E um lembrete de pausa</span></div>
   </div>
 
-  <!-- 76.5-82.5 Claude, Codex and Cursor -->
-  <div class="clip" id="s6" data-start="76.5" data-duration="6">
-    <div class="grid"></div>
-    <div class="glow" style="width:900px;height:700px;left:950px;top:200px;opacity:.2"></div>
-    <div class="cap" id="s6c" style="left:130px;top:230px;width:800px">
-      <div class="k" data-en="&lt;i&gt;&lt;/i&gt;Multi-service"><i></i>Multi-serviço</div>
-      <div class="h" style="font-size:84px" data-en="Claude, Codex&lt;br&gt;and Cursor.&lt;br&gt;&lt;em&gt;One pet.&lt;/em&gt;">Claude, Codex<br>e Cursor.<br><em>Um bichinho só.</em></div>
-      <div class="p" data-en="Each service with its own %, and the mood follows &lt;b&gt;whoever is working.&lt;/b&gt;">Cada serviço com a sua %, e o humor segue <b>quem estiver trabalhando.</b></div>
-    </div>
-    <video id="v-trio" src="assets/clips/trio.webm" muted data-start="76.5" data-duration="6" style="left:1000px;top:240px;width:820px;height:601px"></video>
-  </div>
-
-  <!-- 82.5-89.5 where the week went -->
-  <div class="clip" id="s7" data-start="82.5" data-duration="7">
+  <!-- 76.5-83.5 where the week went -->
+  <div class="clip" id="s7" data-start="76.5" data-duration="7">
     <div class="glow" style="width:800px;height:900px;left:1050px;top:100px;opacity:.18"></div>
     <div class="cap" id="s7c" style="left:130px;top:290px;width:820px">
       <div class="k" data-en="&lt;i&gt;&lt;/i&gt;History"><i></i>Histórico</div>
@@ -236,12 +223,12 @@
       <div class="p" data-en="Tokens by model, by project, and &lt;b&gt;30 days on a heatmap.&lt;/b&gt;">Tokens por modelo, por projeto e <b>30 dias num mapa de calor.</b></div>
     </div>
     <div class="cam" id="s7cam" style="left:1120px;top:40px;width:660px;height:1000px">
-      <video id="v-det" src="assets/clips/details.webm" muted data-start="82.5" data-duration="7" style="width:660px;height:1466px"></video>
+      <video id="v-det" src="assets/clips/details.webm" muted data-start="76.5" data-duration="7" style="width:660px;height:1466px"></video>
     </div>
   </div>
 
-  <!-- 89.5-100 outro -->
-  <div class="clip" id="s8" data-start="89.5" data-duration="10.5">
+  <!-- 83.5-94 outro -->
+  <div class="clip" id="s8" data-start="83.5" data-duration="10.5">
     <div class="grid"></div>
     <div class="glow" style="width:1000px;height:600px;left:460px;top:120px;opacity:.3"></div>
     <div class="center" id="s8c" style="gap:24px">
@@ -253,7 +240,7 @@
       </div>
       <div class="k" id="s8u" style="font-size:28px;letter-spacing:.06em;text-transform:none;color:var(--mut)">macOS · Windows · Linux · github.com/JalelTounsi/claude-usage-monitor</div>
     </div>
-    <video id="v-out" src="assets/clips/hello.webm" muted data-start="89.5" data-duration="10.5" style="left:811px;top:40px;width:298px;height:340px"></video>
+    <video id="v-out" src="assets/clips/hello.webm" muted data-start="83.5" data-duration="10.5" style="left:811px;top:40px;width:298px;height:340px"></video>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
@@ -358,26 +345,21 @@
       tl.to(id, { opacity: 0, duration: 0.3 }, at + 2.7)
     })
 
-    // 9 three services
-    enterCap('#s6c', 74.7)
-    tl.fromTo('#v-trio', { scale: 0.85, opacity: 0, rotation: 3 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.9, ease: 'back.out(1.4)' }, 74.9)
-    tl.to('#v-trio', { y: -14, duration: 1.4, yoyo: true, repeat: 2, ease: 'sine.inOut' }, 75.9)
+    // 9 the camera scrolls slowly down the open Details panel
+    enterCap('#s7c', 74.7)
+    tl.fromTo('#s7cam', { x: 200, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease }, 74.6)
+    tl.fromTo('#v-det', { y: 0 }, { y: -(1466 - 1000), duration: 4.2, ease: 'power1.inOut' }, 75.8)
 
-    // 10 the camera scrolls slowly down the open Details panel
-    enterCap('#s7c', 80.7)
-    tl.fromTo('#s7cam', { x: 200, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease }, 80.6)
-    tl.fromTo('#v-det', { y: 0 }, { y: -(1466 - 1000), duration: 4.2, ease: 'power1.inOut' }, 81.8)
-
-    // 11 outro
-    tl.fromTo('#v-out', { scale: 0.3, opacity: 0, y: 100 }, { scale: 1, opacity: 1, y: 0, duration: 1.0, ease: 'back.out(1.6)' }, 87.7)
-    tl.fromTo('#s8h', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease }, 88.4)
-    tl.fromTo('#s8p', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease }, 89)
-    pop('#s8cmd', 89.8)
-    tl.fromTo('#s8u', { opacity: 0 }, { opacity: 1, duration: 0.7 }, 90.5)
-    tl.to(['#s8c', '#v-out'], { opacity: 0, duration: 1.2 }, 96)
+    // 10 outro
+    tl.fromTo('#v-out', { scale: 0.3, opacity: 0, y: 100 }, { scale: 1, opacity: 1, y: 0, duration: 1.0, ease: 'back.out(1.6)' }, 81.7)
+    tl.fromTo('#s8h', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease }, 82.4)
+    tl.fromTo('#s8p', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease }, 83)
+    pop('#s8cmd', 83.8)
+    tl.fromTo('#s8u', { opacity: 0 }, { opacity: 1, duration: 0.7 }, 84.5)
+    tl.to(['#s8c', '#v-out'], { opacity: 0, duration: 1.2 }, 90)
 
     // scene changes: a plain crossfade, the new scene settling up into place
-    const scenes = [['#s1', 0, 5], ['#s2', 5, 11], ['#sm', 11, 33], ['#s4', 33, 41.5], ['#sp', 41.5, 48.5], ['#sh', 48.5, 55], ['#s5', 55, 61.5], ['#st', 61.5, 74.5], ['#s6', 74.5, 80.5], ['#s7', 80.5, 87.5], ['#s8', 87.5, 98]]
+    const scenes = [['#s1', 0, 5], ['#s2', 5, 11], ['#sm', 11, 33], ['#s4', 33, 41.5], ['#sp', 41.5, 48.5], ['#sh', 48.5, 55], ['#s5', 55, 61.5], ['#st', 61.5, 74.5], ['#s7', 74.5, 81.5], ['#s8', 81.5, 92]]
     scenes.forEach(([id, start, end], i) => {
       if (i > 0) tl.fromTo(id, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, start)
       if (i < scenes.length - 1) tl.to(id, { opacity: 0, duration: 0.45, ease: 'power1.in' }, end - 0.45)

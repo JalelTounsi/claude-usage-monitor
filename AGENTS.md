@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Clauddy is a pixel-art desktop pet that tracks Claude Code usage: the real session and weekly % from the account (OAuth) and the token counts from local logs, plus Codex and Cursor when connected. It is a native app in Rust (`native/`), macOS first, with Windows and Linux (x64) builds; the `clauddy` npm package is a launcher that downloads it. How it works is in [`docs/design/`](docs/design/); why it is like this, in [`docs/decisions/`](docs/decisions/).
+Clauddy is a pixel-art desktop pet that tracks Claude Code usage: the real session and weekly % from the account (OAuth) and the token counts from local logs. Claude only ([PDR-001](docs/decisions/PDR-001-claude-only.md)). It is a native app in Rust (`native/`), macOS first, with Windows and Linux (x64) builds; the `clauddy` npm package is a launcher that downloads it. How it works is in [`docs/design/`](docs/design/); why it is like this, in [`docs/decisions/`](docs/decisions/).
 
 ## Layout
 
@@ -45,7 +45,7 @@ bun run test       # the launcher's test
 
 ## Tests
 
-- `cargo test --release` in `native/`: each reader (`usage.rs`, `auth.rs`, `codex.rs`, `cursor.rs`, `reminders.rs`, ...) has its unit tests, and `src/screens/snapshots.rs` is the snapshot gallery. A new state gets a new case.
+- `cargo test --release` in `native/`: each reader (`usage.rs`, `auth.rs`, `reminders.rs`, ...) has its unit tests, and `src/screens/snapshots.rs` is the snapshot gallery. A new state gets a new case.
 - `bun run test` at the root: the launcher.
 
 > `updates.rs`'s install path spawns `curl … | bash` — never call `Updater::install` from a test, or it installs over the running app.
@@ -119,10 +119,10 @@ Claude Code as the product Clauddy tracks is fine to name. PR descriptions and c
 
 ## Companion behavior
 
-- Widget sizes: expanded, compact, and pet-only; `native-ui.json` remembers the choice. Pet-only is floating-mode only; a usage glance is always above the pet, drawn as the pet's own speech bubble within the fixed window canvas: per service, the session % and the week's % beside it. Hovering the pet or the glance slides out the glance's expand button, which opens compact, without resizing or moving the window. Dragging the pet moves the window; a click on it does not change size.
+- Widget sizes: expanded, compact, and pet-only; `native-ui.json` remembers the choice. Pet-only is floating-mode only; a usage glance is always above the pet, drawn as the pet's own speech bubble within the fixed window canvas: the session % and the week's % beside it. Hovering the pet or the glance slides out the glance's expand button, which opens compact, without resizing or moving the window. Dragging the pet moves the window; a click on it does not change size.
 - Session reset reminders are explicitly requested, separate from threshold notifications. They run while Clauddy is open and catch up after sleep/restart. They persist before firing, cancel on disconnect/removal, and are account-scoped.
-- A deadline alone does not prove a new budget. Only a fresh, lower reading after that deadline earns “budget is back”; otherwise say the reset time arrived. Codex logs and Cursor fetches can be stale. Never substitute an expired reading with zero.
-- Compact and pet-only moods follow activity across connected providers, independently of the selected usage tab. Logos identify the workers; simultaneous work uses a stable generic working animation. With no active sources, the hottest connected session sets the mood: on fire past the fire threshold, maxed out at 100%, otherwise rest. The logo of the service on fire (or maxed out) takes the status dot's place. Cursor's session is its billing month. An expired Codex or Cursor reading doesn't count. Stale activity and disconnected sources are ignored.
-- Working means an open turn, not a recent write: Claude Code, Codex and Cursor can write nothing for minutes while a command runs or the model thinks. Claude's turn closes on a final answer (`end_turn`, then `system/turn_duration`) or `[Request interrupted by user`; Codex's task opens on `task_started` and closes on `task_complete` or `turn_aborted`, tracked as each rollout is read (its tasks run far past a tail); Cursor's on `turn_ended`. Slash commands, `!` shell input, task notices and meta lines open nothing. An open turn untouched for 30 minutes counts as abandoned; a log that says nothing falls back to the recent-write window.
+- A deadline alone does not prove a new budget. Only a fresh, lower reading after that deadline earns “budget is back”; otherwise say the reset time arrived.
+- The mood follows Claude: working on an open turn; otherwise the session sets it: on fire past the fire threshold, maxed out at 100%, otherwise rest. Stale activity is ignored.
+- Working means an open turn, not a recent write: Claude Code can write nothing for minutes while a command runs or the model thinks. Claude's turn closes on a final answer (`end_turn`, then `system/turn_duration`) or `[Request interrupted by user`. Slash commands, `!` shell input, task notices and meta lines open nothing. An open turn untouched for 30 minutes counts as abandoned; a log that says nothing falls back to the recent-write window.
 - Pets: each is a pair of sprite sheets in the classic sprite's layout (`native/src/components/skins.rs`), with boxes that keep it the same size and baseline across moods ([design/06-pets.md](docs/design/06-pets.md)). Seasonal packs override the saved pick on their days (Halloween 10/31, Christmas 12/24–25), one pet per pack and year, picked by a hash and not stored.
 - `AGENTS.md` is the single source of project instructions.

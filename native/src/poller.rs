@@ -51,13 +51,6 @@ pub struct Snapshot {
     pub accounts: Vec<Account>,
     pub active: String,
     pub login: Login,
-    /// Codex, when it's tracked: its reading, and whether this machine has
-    /// Codex at all (and on what plan)
-    pub codex: Option<crate::codex::CodexUsage>,
-    pub codex_found: Option<(bool, Option<String>)>,
-    /// Cursor, the same way: found means its app is signed in here
-    pub cursor: Option<crate::cursor::CursorUsage>,
-    pub cursor_found: Option<(bool, Option<String>)>,
     /// the reset reminders armed, and why the last ask was refused
     pub reminders: Vec<crate::reminders::Reminder>,
     pub reminder_error: Option<(String, Instant)>,
@@ -215,12 +208,7 @@ struct Worker {
     prefs: Prefs,
     /// consecutive 401s: one can be a refresh racing another, two is a dead token
     auth_fails: u32,
-    codex: crate::codex::Codex,
-    cursor: crate::cursor::Cursor,
     reminders: crate::reminders::Reminders,
-    /// the last Codex and Cursor readings, and when they were taken: their
-    /// reset countdowns count from then
-    ext: (Option<crate::codex::CodexUsage>, Option<crate::cursor::CursorUsage>, i64),
 }
 
 impl Worker {
@@ -243,17 +231,9 @@ impl Worker {
             alerts: alerts::State::default(),
             prefs: Prefs::load(),
             auth_fails: 0,
-            codex: crate::codex::Codex::new(None),
-            cursor: crate::cursor::Cursor::new(),
             reminders: crate::reminders::Reminders::load(&crate::auth::default_data_dir()),
-            ext: (None, None, 0),
         };
         w.reader.set_wsl(w.prefs.wsl);
-        let found = (w.codex.detect(), w.cursor.detect());
-        if let Ok(mut s) = w.out.lock() {
-            s.codex_found = Some(found.0);
-            s.cursor_found = Some(found.1);
-        }
         w.bind();
         w.publish_reminders(None);
         w
@@ -316,18 +296,6 @@ impl Worker {
                 if (p.heads_up, p.near_limit) != (self.prefs.heads_up, self.prefs.near_limit) {
                     self.alerts.rearm();
                     self.alerts.save(&self.dir);
-                }
-                if p.codex && !self.prefs.codex {
-                    let found = self.codex.detect();
-                    if let Ok(mut s) = self.out.lock() {
-                        s.codex_found = Some(found);
-                    }
-                }
-                if p.cursor && !self.prefs.cursor {
-                    let found = self.cursor.detect();
-                    if let Ok(mut s) = self.out.lock() {
-                        s.cursor_found = Some(found);
-                    }
                 }
                 self.prefs = p;
             }
@@ -417,14 +385,9 @@ impl Worker {
             }
             save_cache(&self.dir, &self.cache);
         }
-        let codex = if self.prefs.codex { self.codex.get_usage(now_ms()) } else { None };
-        let cursor = self.prefs.cursor.then(|| self.cursor.get_usage(now_ms()));
-        self.check_alerts(&reading, codex.as_ref(), cursor.as_ref());
-        self.ext = (codex.clone(), cursor.clone(), now_ms());
+        self.check_alerts(&reading);
         self.check_reminders();
         if let Ok(mut s) = self.out.lock() {
-            s.codex = codex;
-            s.cursor = cursor;
             s.seq += 1;
             s.usage = Some(reading);
             s.loaded = true;
@@ -449,22 +412,11 @@ impl Worker {
     /// A service's session as the reminders see it: its %, when it resets
     /// (epoch ms), when the reading was fresh, and whether it's connected.
     fn session_state(&mut self, provider: Provider) -> (Option<f64>, Option<i64>, Option<i64>, bool) {
-        let ext = |w: Option<&crate::codex::Window>, read_at: i64, fresh: Option<i64>, on: bool| {
-            (w.and_then(|w| w.pct), w.and_then(|w| w.reset_ms).map(|ms| read_at + ms), fresh, on)
-        };
         match provider {
             Provider::Claude => {
                 let at = self.cache.fetched_at;
                 let session = self.cache.limits.as_ref().map(|l| &l.session);
                 (session.map(|s| s.pct), at.zip(session.and_then(|s| s.reset_ms)).map(|(a, r)| a + r), at, self.auth.is_connected())
-            }
-            Provider::Codex => {
-                let c = self.ext.0.as_ref();
-                ext(c.and_then(|c| c.session.as_ref()), self.ext.2, c.and_then(|c| c.limits_at), self.prefs.codex)
-            }
-            Provider::Cursor => {
-                let c = self.ext.1.as_ref();
-                ext(c.and_then(|c| c.session.as_ref()), self.ext.2, c.and_then(|c| c.limits_at), self.prefs.cursor)
             }
         }
     }
@@ -492,10 +444,7 @@ impl Worker {
         if now - fresh > 15 * 60_000 {
             return self.publish_reminders(Some("Wait for a fresh usage reading before setting a reminder."));
         }
-        let label = match provider {
-            Provider::Claude => format!("Claude · {}", self.accounts.active().label.unwrap_or_else(|| "your account".into())),
-            p => p.name().into(),
-        };
+        let label = format!("Claude · {}", self.accounts.active().label.unwrap_or_else(|| "your account".into()));
         let r = crate::reminders::Reminder { key, provider, label, at, pct };
         let ok = self.reminders.arm(r, now);
         self.publish_reminders((!ok).then_some("This reset time has passed. Wait for a fresh reading."));
@@ -513,8 +462,6 @@ impl Worker {
                     let id = r.key.trim_start_matches("claude:");
                     !self.accounts.list().iter().any(|a| a.id == id) || !self.accounts.data_dir_of(id).join("auth.json").exists()
                 }
-                Provider::Codex => !self.prefs.codex,
-                Provider::Cursor => !self.prefs.cursor,
             })
             .map(|r| r.key.clone())
             .collect();
@@ -524,7 +471,7 @@ impl Worker {
         let due = self.reminders.take_due(now);
         let active = crate::reminders::key(Provider::Claude, &self.accounts.active_id());
         for r in &due {
-            let current = r.provider != Provider::Claude || r.key == active;
+            let current = r.key == active;
             let (pct, _, fresh, _) = self.session_state(r.provider);
             let confirmed = current && fresh.is_some_and(|f| f >= r.at) && pct.is_some_and(|p| p < r.pct);
             alerts::send(&crate::reminders::note(r, confirmed));
@@ -582,26 +529,10 @@ impl Worker {
         }
     }
 
-    fn check_alerts(&mut self, reading: &usage::Usage, codex: Option<&crate::codex::CodexUsage>, cursor: Option<&crate::cursor::CursorUsage>) {
-        let mut scopes = self.scopes(reading);
+    fn check_alerts(&mut self, reading: &usage::Usage) {
+        let scopes = self.scopes(reading);
         // "window reset" is about the 5-hour window only
         let claude_session = scopes.first().filter(|s| s.session).and_then(|s| s.pct);
-        let scope = |label: &str, w: &Option<crate::codex::Window>, session: bool| Scope {
-            label: label.into(),
-            pct: w.as_ref().and_then(|w| w.pct),
-            reset_ms: w.as_ref().and_then(|w| w.reset_ms),
-            session,
-        };
-        // Codex has its own windows, so its own keys ("Codex session:80")
-        if let Some(c) = codex {
-            scopes.push(scope(if c.weekly_only { "Codex weekly" } else { "Codex session" }, &c.session, true));
-            scopes.push(scope("Codex weekly", &c.weekly, false));
-        }
-        // Cursor's budget is the billing cycle; its API-model pool fills on its own
-        if let Some(c) = cursor {
-            scopes.push(scope("Cursor usage", &c.session, false));
-            scopes.push(scope("Cursor API models", &c.api, false));
-        }
         let thresholds = [self.prefs.heads_up, self.prefs.near_limit];
         let (notes, dirty) = self.alerts.check(self.prefs.alerts, &thresholds, &scopes);
         let (reset, reset_dirty) = self.alerts.window_reset(self.prefs.alerts, claude_session);

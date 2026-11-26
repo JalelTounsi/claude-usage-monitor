@@ -53,67 +53,6 @@ pub fn level(pct: f64, accent: Color32) -> (Color32, Color32) {
     }
 }
 
-// a reading older than this says how old it is instead of its tokens
-const STALE_MS: i64 = 15 * 60_000;
-
-// a Codex or Cursor window's subtitle: its reset and tokens (Cursor has
-// none); how old it is when the reading is stale; waiting when the window
-// passed with no fresh reading; `empty` before any reading
-fn ext_sub(w: &Option<crate::codex::Window>, spent: Option<String>, stale: Option<i64>, empty: &str) -> String {
-    let t = spent;
-    let join = |parts: Vec<Option<String>>| parts.into_iter().flatten().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ");
-    let Some(w) = w else { return join(vec![Some(empty.into()), t]) };
-    if w.pct.is_none() {
-        return join(vec![Some("waiting for a fresh reading".into()), t]);
-    }
-    if let Some(age) = stale {
-        let at = w.reset_ms.map(|ms| format!("resets {}", crate::format::clock(ms)));
-        return join(vec![at, Some(format!("read {} ago", countdown(age)))]);
-    }
-    let s = join(vec![w.reset_ms.map(|ms| format!("resets in {}", reset_in(ms))), t]);
-    if s.is_empty() { "—".into() } else { s }
-}
-
-/// Codex's meters: its session (or, on a weekly-only plan, its week in that
-/// place) and its week.
-/// `api_value`: the tokens read in dollars, at API prices.
-pub fn codex_meters(c: &crate::codex::CodexUsage, api_value: bool) -> Vec<Meter> {
-    let spent = |tk: u64, cost: f64| Some(if api_value { crate::format::dollars(cost) } else { tok(tk) });
-    let (session, week) = (if c.weekly_only { spent(c.tokens_week, c.cost_week) } else { spent(c.tokens_5h, c.cost_5h) }, spent(c.tokens_week, c.cost_week));
-    let now = crate::usage::now_ms();
-    let stale = c.limits_at.map(|at| now - at).filter(|&age| age > STALE_MS);
-    let pct = |w: &Option<crate::codex::Window>| w.as_ref().and_then(|w| w.pct);
-    let mut v = vec![Meter {
-        note: None,
-        label: if c.weekly_only { "weekly · all models".into() } else { "current session".into() },
-        pct: pct(&c.session),
-        sub: ext_sub(&c.session, session, stale, NOT_YET),
-    }];
-    if !c.weekly_only {
-        v.push(Meter { note: None, label: "weekly · all models".into(), pct: pct(&c.weekly), sub: ext_sub(&c.weekly, week, stale, NOT_YET) });
-    }
-    v
-}
-
-fn tok(n: u64) -> String {
-    format!("{} tokens", tokens(n))
-}
-
-const NOT_YET: &str = "limits not recorded yet";
-
-/// Cursor's meters: the plan's monthly budget and the API-models pool
-/// beside it. No tokens: Cursor's dashboard doesn't give them.
-pub fn cursor_meters(c: &crate::cursor::CursorUsage) -> Vec<Meter> {
-    let now = crate::usage::now_ms();
-    let stale = c.limits_at.map(|at| now - at).filter(|&age| age > STALE_MS);
-    let pct = |w: &Option<crate::codex::Window>| w.as_ref().and_then(|w| w.pct);
-    let empty = if c.signed_out { "sign in to the Cursor app" } else { "no reading yet" };
-    vec![
-        Meter { note: None, label: "this month · included".into(), pct: pct(&c.session), sub: ext_sub(&c.session, None, stale, empty) },
-        Meter { note: None, label: "API models · this month".into(), pct: pct(&c.api), sub: ext_sub(&c.api, None, stale, "—") },
-    ]
-}
-
 /// The session, the week, and any per-model weekly limits. Connected but not
 /// read yet (or throttled): the meters stay, empty, rather than ask to log in.
 /// `api_value`: the tokens read in dollars, at API prices.
@@ -228,7 +167,7 @@ mod tests {
     fn the_ramp_is_plain_then_warm_then_hot() {
         assert_eq!(level(10.0, color::ACCENT), (color::ACCENT, color::FG));
         assert_eq!(level(60.0, color::ACCENT).0, color::WARM);
-        assert_eq!(level(85.0, color::CODEX_BAR).0, color::HOT);
+        assert_eq!(level(85.0, color::ACCENT).0, color::HOT);
     }
 
     #[test]
@@ -237,21 +176,5 @@ mod tests {
         let waiting = meters(&Snapshot { connected: true, ..Default::default() }, false);
         assert_eq!(waiting.len(), 2);
         assert!(waiting.iter().all(|m| m.pct.is_none()));
-    }
-}
-
-#[cfg(test)]
-mod codex_tests {
-    use super::*;
-    use crate::codex::Window;
-
-    #[test]
-    fn a_codex_window_says_reset_tokens_or_how_old_it_is() {
-        let w = Some(Window { pct: Some(20.0), reset_ms: Some(2 * 3_600_000), expired: false });
-        assert!(ext_sub(&w, Some(tok(5_000)), None, NOT_YET).starts_with("resets in 2h 0m ("));
-        assert!(ext_sub(&w, Some(tok(5_000)), Some(20 * 60_000), NOT_YET).ends_with("read 20m ago"));
-        let gone = Some(Window { pct: None, reset_ms: None, expired: true });
-        assert_eq!(ext_sub(&gone, None, None, NOT_YET), "waiting for a fresh reading");
-        assert_eq!(ext_sub(&None, None, None, NOT_YET), "limits not recorded yet");
     }
 }

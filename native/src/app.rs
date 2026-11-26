@@ -82,10 +82,8 @@ pub fn mood_for(usage: Option<&Usage>, session_pct: Option<f64>, fire: f64) -> M
     }
 }
 
-/// The mood across every connected service: any of them working wins; with
-/// none working, the hottest session sets it (an expired Codex or Cursor
-/// reading doesn't count; Cursor's session is its billing month). Claude's
-/// logs alone say when it's asleep.
+/// The mood from Claude: working wins, then the session's heat, then rest;
+/// its logs say when it's asleep.
 pub fn mood_across(snap: &Snapshot, claude: Option<(f64, Option<i64>)>, fire: f64) -> Mood {
     if !crate::screens::workers(snap).is_empty() {
         return Mood::Working;
@@ -316,16 +314,6 @@ impl App {
                     self.draft.api_value = on;
                     self.prefs.save();
                 }
-                Action::SetCodex(on) => {
-                    // connecting a service takes effect at once, like logging in
-                    self.prefs.codex = on;
-                    self.draft.codex = on;
-                    self.prefs.save();
-                    self.send(Command::Prefs(self.prefs.clone()));
-                    if on {
-                        self.view.provider = crate::components::logos::Provider::Codex;
-                    }
-                }
                 Action::Remind(p, on) => self.send(Command::Remind(p, on)),
                 Action::HidePopover => self.close_popover(ctx),
                 Action::CheckUpdates => self.updater.check(),
@@ -351,15 +339,6 @@ impl App {
                     self.draft.wsl = on;
                     self.prefs.save();
                     self.send(Command::Prefs(self.prefs.clone()));
-                }
-                Action::SetCursor(on) => {
-                    self.prefs.cursor = on;
-                    self.draft.cursor = on;
-                    self.prefs.save();
-                    self.send(Command::Prefs(self.prefs.clone()));
-                    if on {
-                        self.view.provider = crate::components::logos::Provider::Cursor;
-                    }
                 }
                 Action::SubmitCode => {
                     let code = std::mem::take(&mut self.code);
@@ -462,22 +441,6 @@ impl App {
                 let w = live(&crate::auth::Window { pct: sc.pct, reset_ms: sc.reset_ms }, snap.limits_at);
                 lines.push(line(&format!("{} weekly", sc.label), w.map(|w| w.0), w.and_then(|w| w.1)));
             }
-        }
-        // the other services, each with its own windows
-        let ext = |w: &Option<crate::codex::Window>| (w.as_ref().and_then(|w| w.pct), w.as_ref().and_then(|w| w.reset_ms));
-        if let Some(c) = &snap.codex {
-            let (p, r) = ext(&c.session);
-            lines.push(line(if c.weekly_only { "Codex weekly" } else { "Codex session" }, p, r));
-            if !c.weekly_only {
-                let (p, r) = ext(&c.weekly);
-                lines.push(line("Codex weekly", p, r));
-            }
-        }
-        if let Some(c) = &snap.cursor {
-            let (p, r) = ext(&c.session);
-            lines.push(line("Cursor usage", p, r));
-            let (p, r) = ext(&c.api);
-            lines.push(line("Cursor API", p, r));
         }
         tray.set_lines(lines);
         let events = tray.take_events();

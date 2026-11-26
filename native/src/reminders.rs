@@ -4,7 +4,7 @@
 //
 // A reminder is saved before it can fire and consumed before it's delivered,
 // so a restart neither loses nor repeats it. Claude's are per account
-// (`claude:<id>`); Codex and Cursor have one connection each.
+// (`claude:<id>`).
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -13,8 +13,8 @@ use std::path::{Path, PathBuf};
 use crate::components::logos::Provider;
 
 const HOUR: i64 = 3_600_000;
-/// Cursor's budget is a billing month, so a reset can be weeks out
-const MAX_AHEAD: i64 = 32 * 24 * HOUR;
+/// a weekly-only plan's reset can be a week out
+const MAX_AHEAD: i64 = 8 * 24 * HOUR;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Reminder {
@@ -109,8 +109,6 @@ impl Reminders {
 pub fn key(provider: Provider, account: &str) -> String {
     match provider {
         Provider::Claude => format!("claude:{account}"),
-        Provider::Codex => "codex".into(),
-        Provider::Cursor => "cursor".into(),
     }
 }
 
@@ -167,12 +165,12 @@ mod tests {
         let dir = TempDir::new().unwrap();
         std::fs::write(
             dir.path().join("reset-reminders.json"),
-            r#"{"pending":[{"key":"cursor","provider":"cursor","label":"Cursor","at":1790000100000,"pct":81},{"key":"x","provider":"nope"}],"delivered":{"codex":1790000000000}}"#,
+            r#"{"pending":[{"key":"claude:a1","provider":"claude","label":"Claude","at":1790000100000,"pct":81},{"key":"x","provider":"nope"}],"delivered":{"claude:a1":1790000000000}}"#,
         )
         .unwrap();
         let r = Reminders::load(dir.path());
         assert_eq!(r.list().len(), 1);
-        assert_eq!(r.list()[0].provider, Provider::Cursor);
+        assert_eq!(r.list()[0].provider, Provider::Claude);
         assert_eq!(key(Provider::Claude, "a1"), "claude:a1");
     }
 

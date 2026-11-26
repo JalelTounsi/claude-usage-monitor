@@ -26,11 +26,11 @@ Everything is in tokens and percent by default. **tokens / $** under Details (or
 | Size | What it is | How to get there |
 |---|---|---|
 | Expanded | The scene, the session, the week and the details | The default; **⤢** from compact |
-| Compact | The pet beside one row per connected service: the session % and its bar, and on the right, smaller and dimmer, the week's % over a shorter bar of its own (hovering it shows a small tag with the week's reset); no week on a weekly-only plan, whose session already is the week, nor for Cursor | **–** in the title bar |
-| Just the pet | The pet alone, floating, with the usage always above it as the pet's own speech bubble: per service, the session % and the week's % beside it, a bar for each; hovering the pet or the bubble slides out the **⤢** that opens compact | The pet icon in the compact header (floating mode only) |
+| Compact | The pet beside Claude's row: the session % and its bar, and on the right, smaller and dimmer, the week's % over a shorter bar of its own (hovering it shows a small tag with the week's reset); no week on a weekly-only plan, whose session already is the week | **–** in the title bar |
+| Just the pet | The pet alone, floating, with the usage always above it as the pet's own speech bubble: the session % and the week's % beside it, a bar for each; hovering the pet or the bubble slides out the **⤢** that opens compact | The pet icon in the compact header (floating mode only) |
 
 - **Drag** the widget anywhere; in pet-only mode drag the pet itself. Enter on the focused pet opens compact.
-- **⋯**, in the title band of expanded and compact, opens a small menu: **Change pet** (the pet picker on its own: a pick takes at once, no Save), **Settings** (**Accounts**, **Alerts** and **Appearance** tabs) and **Usage page** (the official one of the service on screen); at its foot, the version with **Check for updates**. When a newer release is out, the dots of ⋯ turn coral and ripple now and then, and the foot becomes a card with **Update**. **×** quits.
+- **⋯**, in the title band of expanded and compact, opens a small menu: **Change pet** (the pet picker on its own: a pick takes at once, no Save), **Settings** (**Accounts**, **Alerts** and **Appearance** tabs) and **Usage page** (Claude's official one); at its foot, the version with **Check for updates**. When a newer release is out, the dots of ⋯ turn coral and ripple now and then, and the foot becomes a card with **Update**. **×** quits.
 - **Notify at reset**, under the session, arms a one-shot notification for when the session resets ([alerts](05-alerts.md)).
 - The chosen size is remembered.
 
@@ -45,7 +45,7 @@ Switching takes effect at once, with no restart.
 
 ### Themes
 
-**⚙ Settings → Appearance → Theme** picks the panel's colours, one swatch each: **By service** (the default: clay for Claude, green-grey for Codex, steel blue for Cursor), **Graphite**, **Night**, **Moss**, **Plum** and **Ink**. A fixed theme paints the card, its glow, the menus and the settings sheet the same whatever the service; the text, the bars, the logos and the pet keep their colours, since every theme is dark ([ADR-020](../decisions/ADR-020-a-theme-repaints-the-panel-only.md)). A pick shows on the card at once and is kept on Save (`theme` in `config.json`).
+**⚙ Settings → Appearance → Theme** picks the panel's colours, one swatch each: **Clay** (the default, the original look), **Graphite**, **Night**, **Moss**, **Plum** and **Ink**. A theme paints the card, its glow, the menus and the settings sheet; the text, the bars, the logos and the pet keep their colours, since every theme is dark ([ADR-020](../decisions/ADR-020-a-theme-repaints-the-panel-only.md)). A pick shows on the card at once and is kept on Save (`theme` in `config.json`).
 
 ## Moods
 
@@ -56,7 +56,7 @@ Switching takes effect at once, with no restart.
 
 **Maxed out** (the session at 100%) slumps and sweats, and **sleeping** (idle 5+ minutes) closes its eyes under a "Z z". The pictures come from the snapshot gallery in `native/tests/snapshots/`, which has every state; the other pets have every mood in their own look ([pets](06-pets.md)).
 
-In compact and pet-only sizes the mood follows whichever connected service is working, with provider logos naming the workers. With none active, the hottest session sets the mood: on fire past the fire threshold, maxed out at 100%, resting otherwise; the logo of the service on fire takes the status dot's place. "Working" means a turn is open, not that a file was written recently ([ADR-006](../decisions/ADR-006-working-means-an-open-turn.md)). What Claude is doing (reading, editing, running, planning, researching, delegating, waiting) shows in the status line.
+The mood follows Claude: working while a turn is open; otherwise the session sets it: on fire past the fire threshold, maxed out at 100%, resting otherwise. "Working" means a turn is open, not that a file was written recently ([ADR-006](../decisions/ADR-006-working-means-an-open-turn.md)). What Claude is doing (reading, editing, running, planning, researching, delegating, waiting) shows in the status line.
 
 ## The pet talks
 
@@ -71,8 +71,6 @@ Now and then the pet says something in a speech bubble. It speaks only when some
 | Back after 2+ hours away | _Welcome back! You were gone 3h 12m. The session's at 12%._ | _Welcome back!_ | |
 | 90 minutes of unbroken work | _You've been at it for 1h 35m straight. Stretch break?_ | _Stretch break?_ | |
 | A new record day (30-day best) | _New record! 45M tokens today, your biggest day in a month._ | _New record: 45M!_ | |
-| Codex crosses fire, hits 100% or resets | _Codex is at 91% now. It resets in 1h 12m._ | _Codex at 91%!_ | ✓ (fire, reset) |
-| Cursor crosses fire, hits 100% or starts a new month | _Cursor is at 91% now. It resets in 6d 4h._ | _Cursor at 91%!_ | ✓ (fire, reset) |
 
 The greeting follows the clock (_Good morning_, _Good afternoon_, _Good evening_, or _Still up?_ before 5 AM) and comes once a day, as does the record. The reset recap covers only what the pet saw, so launched mid-session it says less. A click dismisses the bubble.
 

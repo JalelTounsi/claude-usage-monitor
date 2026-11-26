@@ -36,7 +36,6 @@ const CARD_W: f32 = 280.0;
 const SIDE: f32 = 16.0;
 const BODY_TOP: f32 = 38.0;
 const TABS_H: f32 = 4.0 + 30.0 + 12.0;
-const TILES_H: f32 = 62.0;
 const CONN_H: f32 = 64.0;
 const LOGIN_H: f32 = 112.0;
 const ACTIONS_H: f32 = 14.0 + 30.0;
@@ -46,24 +45,19 @@ fn logging_in(snap: &Snapshot) -> bool {
     matches!(snap.login, Login::AwaitingCode | Login::Failed(_))
 }
 
-// the service whose card Accounts shows: the one whose tile was picked
-fn account_service(view: &super::View) -> Provider {
-    view.provider
-}
-
 /// Windows only: a switch under the Claude card to read Claude Code's logs
 /// inside WSL too. Other systems have no WSL, so they never see it.
 const WSL_SWITCH: bool = cfg!(windows);
 
-fn wsl_switch(view: &super::View) -> bool {
-    WSL_SWITCH && account_service(view) == Provider::Claude
+fn wsl_switch(_view: &super::View) -> bool {
+    WSL_SWITCH
 }
 
 fn pane_h(tab: Tab, snap: &Snapshot, view: &super::View) -> f32 {
-    let login = account_service(view) == Provider::Claude && logging_in(snap);
+    let login = logging_in(snap);
     let wsl = if wsl_switch(view) { GAP + block_h(1) } else { 0.0 };
     match tab {
-        Tab::Accounts => TILES_H + 10.0 + CONN_H + if login { LOGIN_H } else { 0.0 } + wsl,
+        Tab::Accounts => CONN_H + if login { LOGIN_H } else { 0.0 } + wsl,
         Tab::Alerts => block_h(3) + GAP + block_h(1),
         Tab::Appearance => block_h(1) + GAP + block_h(5) + GAP + block_h(2),
     }
@@ -167,57 +161,9 @@ fn action_button(ui: &Ui, rect: Rect, id: impl std::hash::Hash + std::fmt::Debug
 
 fn accounts(ui: &mut Ui, f: &Frame, left: f32, right: f32, y: f32, code: &mut String, saved: &Prefs, actions: &mut Vec<Action>) {
     let p = ui.painter().clone();
-    // one tile per service; a click opens its card below
-    let picked = account_service(f.view);
-    let w = (right - left - 12.0) / 3.0;
-    for (i, provider) in [Provider::Claude, Provider::Codex, Provider::Cursor].into_iter().enumerate() {
-        let tile = Rect::from_min_size(Pos2::new(left + i as f32 * (w + 6.0), y), Vec2::new(w, TILES_H));
-        let ready = true;
-        let on = provider == picked;
-        let hovered = ready && {
-            let r = click_area(ui, tile, ("service-tile", provider.name()));
-            if r.clicked() && !on {
-                actions.push(Action::SelectProvider(provider));
-            }
-            r.hovered()
-        };
-        let (bg, edge) = match (on, hovered) {
-            (true, _) => (color::TILE_ON, color::TILE_EDGE_ON),
-            (false, true) => (color::TILE, color::CONTROL_HOVER.gamma_multiply(0.6)),
-            (false, false) => (color::TILE, color::HAIR),
-        };
-        p.rect(tile, CornerRadius::same(radius::CONTROL + 4), bg, Stroke::new(1.0, edge), StrokeKind::Inside);
-        let linked = match provider {
-            Provider::Claude => f.snap.connected,
-            Provider::Codex => saved.codex,
-            Provider::Cursor => saved.cursor,
-        };
-        let fade = if !ready {
-            0.4
-        } else if linked || on {
-            1.0
-        } else {
-            0.7
-        };
-        let logo = Rect::from_center_size(Pos2::new(tile.center().x, tile.top() + 19.0), Vec2::splat(18.0));
-        f.logos.draw(&p, provider, logo, if ready && (linked || on) { provider.tint() } else { color::FG_MUTED.gamma_multiply(fade) });
-        text_mid(&p, tile.center().x, tile.top() + 38.0, Align::Center, provider.name(), text::SMALL, color::FG.gamma_multiply(fade));
-        let state = match (ready, linked) {
-            (false, _) => "Soon",
-            (true, true) => "Connected",
-            (true, false) => "Connect",
-        };
-        text_mid(&p, tile.center().x, tile.top() + 51.0, Align::Center, state, text::CAPTION, color::FG_MUTED.gamma_multiply(fade));
-    }
-
-    if picked != Provider::Claude {
-        ext_card(ui, f, picked, left, right, y + TILES_H + 10.0, saved, actions);
-        return;
-    }
-
     // the Claude card: its avatar, who's connected and on what plan, and
     // the way out (or in)
-    let card = Rect::from_min_size(Pos2::new(left, y + TILES_H + 10.0), Vec2::new(right - left, CONN_H));
+    let card = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, CONN_H));
     p.rect(card, CornerRadius::same(radius::CONTROL + 2), color::GROUP, Stroke::new(1.0, color::HAIR), StrokeKind::Inside);
     let avatar = Rect::from_min_size(Pos2::new(card.left() + 10.0, card.center().y - 14.0), Vec2::splat(28.0));
     p.rect_filled(avatar, CornerRadius::same(radius::CONTROL + 1), color::AVATAR_CLAUDE);
@@ -275,61 +221,6 @@ fn accounts(ui: &mut Ui, f: &Frame, left: f32, right: f32, y: f32, code: &mut St
         row_label(&p, left, rows[0], "Claude Code in WSL", false);
         if toggle(ui, right - 10.0, rows[0], "wsl", saved.wsl, true).clicked() {
             actions.push(Action::SetWsl(!saved.wsl));
-        }
-    }
-}
-
-// Codex and Cursor: read from what their own apps keep on this device, so
-// there's no login here, only on or off; it takes effect at once. Codex
-// needs a session on disk, Cursor its app signed in.
-#[allow(clippy::too_many_arguments)]
-fn ext_card(ui: &Ui, f: &Frame, provider: Provider, left: f32, right: f32, y: f32, saved: &Prefs, actions: &mut Vec<Action>) {
-    let p = ui.painter().clone();
-    let card = Rect::from_min_size(Pos2::new(left, y), Vec2::new(right - left, CONN_H));
-    p.rect(card, CornerRadius::same(radius::CONTROL + 2), color::GROUP, Stroke::new(1.0, color::HAIR), StrokeKind::Inside);
-    let avatar = Rect::from_min_size(Pos2::new(card.left() + 10.0, card.center().y - 14.0), Vec2::splat(28.0));
-    let cursor = provider == Provider::Cursor;
-    p.rect_filled(avatar, CornerRadius::same(radius::CONTROL + 1), if cursor { color::AVATAR_CURSOR } else { color::AVATAR_CODEX });
-    f.logos.draw(&p, provider, Rect::from_center_size(avatar.center(), Vec2::splat(18.0)), provider.tint());
-    let x = avatar.right() + 10.0;
-    let (head_y, caption_y) = (card.center().y - 8.0, card.center().y + 9.0);
-    let name = bold_mid(&p, x, head_y, Align::Min, provider.name(), text::BODY, color::FG);
-    let (on, found, plan) = if cursor {
-        let (found, plan) = f.snap.cursor_found.clone().unwrap_or((true, None));
-        (saved.cursor, found, f.snap.cursor.as_ref().and_then(|c| c.plan.clone()).or(plan))
-    } else {
-        let (found, plan) = f.snap.codex_found.clone().unwrap_or((true, None));
-        (saved.codex, found, f.snap.codex.as_ref().and_then(|c| c.plan.clone()).or(plan))
-    };
-    let set = |v: bool| if cursor { Action::SetCursor(v) } else { Action::SetCodex(v) };
-    if let Some(plan) = plan.filter(|_| on) {
-        let style = TagStyle { fg: color::PLAN, edge: color::PLAN_EDGE, wash: color::PLAN_WASH, pad: Vec2::new(4.0, 3.0) };
-        tag(&p, name.right() + 6.0, head_y, Align::Min, &plan.to_lowercase(), &style);
-    }
-    if on {
-        text_mid(&p, x, caption_y, Align::Min, "Connected on this device", text::SMALL, color::CAPTION);
-        let out = Rect::from_center_size(Pos2::new(card.right() - 22.0, card.center().y), Vec2::splat(24.0));
-        let resp = click_area(ui, out, (provider.name(), "off"));
-        if resp.hovered() {
-            p.rect_filled(out, CornerRadius::same(radius::CONTROL), color::MENU_HOVER);
-        }
-        icon::draw(&p, out.center(), icon::LOG_OUT, 13.0, if resp.hovered() { color::REMOVE_HOVER } else { color::REMOVE });
-        if resp.clicked() {
-            actions.push(set(false));
-        }
-    } else {
-        let hint = match (found, cursor) {
-            (true, _) => "Track it beside Claude.",
-            (false, false) => "No Codex sessions on this device yet.",
-            (false, true) => "Sign in to the Cursor app first.",
-        };
-        let clip = p.with_clip_rect(Rect::from_min_max(Pos2::new(x, card.top()), Pos2::new(card.right() - if found { 84.0 } else { 12.0 }, card.bottom())));
-        text_mid(&clip, x, caption_y, Align::Min, hint, text::SMALL, color::CAPTION);
-        if found {
-            let btn = Rect::from_min_size(Pos2::new(card.right() - 76.0, card.center().y - 12.0), Vec2::new(64.0, 24.0));
-            if action_button(ui, btn, (provider.name(), "on"), "Connect", true) {
-                actions.push(set(true));
-            }
         }
     }
 }

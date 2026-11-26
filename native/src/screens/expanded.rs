@@ -10,8 +10,8 @@ use crate::components::breakdown::{self, Hit, Section, section};
 use crate::components::heat_map::{HEAT_H, heat_map};
 use crate::components::login::{LOGIN_H, LoginPick, login_panel};
 use crate::components::logos::Provider;
+use crate::components::meter::Meter;
 use crate::components::meter::{self, meter, meter_skeleton, meters};
-use crate::components::meter::{Meter, codex_meters, cursor_meters};
 use crate::components::more_menu::{MorePick, menu_rect as more_menu_rect, more_button, more_menu};
 use crate::components::night_sky::night_sky;
 use crate::components::pet::Mood;
@@ -59,79 +59,37 @@ struct Service<'a> {
     working: bool,
     /// what it's doing, when its logs say
     activity: Option<&'a str>,
-    /// tokens by model and project, and the map: Cursor has none
+    /// tokens by model and project, and the map
     details: bool,
     by_model: &'a [Labeled],
     by_project: &'a [Labeled],
-    /// the lists over each span; none for Codex, which has the week's only
+    /// the lists over each span
     periods: &'a [Period],
     days30: &'a [u64],
     month: u64,
-    /// today's and the 30 days' tokens at API prices; None where there's no
-    /// price list (Codex)
+    /// today's and the 30 days' tokens at API prices, when they read in dollars
     cost: Option<(f64, f64)>,
 }
 
-fn service<'a>(snap: &'a Snapshot, provider: Provider, empty: &'a crate::usage::Usage, api_value: bool) -> Service<'a> {
-    match provider {
-        Provider::Cursor if let Some(c) = &snap.cursor => Service {
-            provider,
-            meters: cursor_meters(c),
-            accent: color::CURSOR_BAR,
-            bar: color::CURSOR_BAR,
-            heat: &color::HEAT,
-            today: None,
-            live: false,
-            working: c.active,
-            activity: c.activity,
-            details: false,
-            by_model: &[],
-            by_project: &[],
-            periods: &[],
-            days30: &[],
-            month: 0,
-            cost: None,
-        },
-        Provider::Codex if let Some(c) = &snap.codex => Service {
-            provider,
-            meters: codex_meters(c, api_value && c.month_cost > 0.0),
-            accent: color::CODEX_BAR,
-            bar: color::CODEX_BAR,
-            heat: &color::HEAT_CODEX,
-            today: Some(c.tokens_today),
-            live: false, // logs, not a live feed
-            working: c.active,
-            activity: None,
-            details: true,
-            by_model: &c.by_model,
-            by_project: &c.by_project,
-            periods: &[],
-            days30: &c.days30,
-            month: c.month_tokens,
-            // in dollars once one of its models has a price
-            cost: (api_value && c.month_cost > 0.0).then_some((c.cost_today, c.month_cost)),
-        },
-        _ => {
-            let u = snap.usage.as_ref().unwrap_or(empty);
-            Service {
-                provider: Provider::Claude,
-                meters: meters(snap, api_value),
-                accent: color::ACCENT,
-                bar: color::BREAKDOWN,
-                heat: &color::HEAT,
-                today: snap.loaded.then_some(u.today_tokens),
-                live: snap.limits.is_some(),
-                working: u.active,
-                activity: u.activity.as_deref(),
-                details: true,
-                by_model: &u.by_model,
-                by_project: &u.by_project,
-                periods: &u.periods,
-                days30: &u.days30,
-                month: u.month_tokens,
-                cost: api_value.then_some((u.today_cost, u.month_cost)),
-            }
-        }
+fn service<'a>(snap: &'a Snapshot, _provider: Provider, empty: &'a crate::usage::Usage, api_value: bool) -> Service<'a> {
+    let u = snap.usage.as_ref().unwrap_or(empty);
+    Service {
+        provider: Provider::Claude,
+        meters: meters(snap, api_value),
+        accent: color::ACCENT,
+        bar: color::BREAKDOWN,
+        heat: &color::HEAT,
+        today: snap.loaded.then_some(u.today_tokens),
+        live: snap.limits.is_some(),
+        working: u.active,
+        activity: u.activity.as_deref(),
+        details: true,
+        by_model: &u.by_model,
+        by_project: &u.by_project,
+        periods: &u.periods,
+        days30: &u.days30,
+        month: u.month_tokens,
+        cost: api_value.then_some((u.today_cost, u.month_cost)),
     }
 }
 
@@ -208,7 +166,7 @@ fn rows(list: &[Labeled], money: bool, rank: bool, most: usize) -> Vec<Labeled> 
 }
 
 /// Details for the service shown: Claude's lists over the chosen span (or
-/// one project's), Codex's week.
+/// one project's).
 fn blocks(snap: &Snapshot, view: &View, s: &Service) -> Vec<Block> {
     let money = s.cost.is_some();
     let value = if money { breakdown::dollars } else { breakdown::tokens };
@@ -340,7 +298,7 @@ pub fn draw(ui: &mut Ui, ctx: &Context, f: &Frame, code: &mut String) -> Vec<Act
     });
     let today_at = status_line(p, left, right, stage.bottom() + 17.0, mood, activity, today.as_deref(), svc.live);
     // a click on today's usage switches Claude's numbers between tokens and
-    // their API value in dollars (Codex and Cursor have no price list)
+    // their API value in dollars
     if svc.provider == Provider::Claude
         && let Some(at) = today_at
     {
@@ -631,8 +589,6 @@ fn service_tabs(ui: &Ui, f: &Frame, left: f32, right: f32, y: f32, services: &[P
         let resp = click_area(ui, r, ("service-tab", prov.name()));
         let on = prov == chosen;
         let (bg, edge) = match (on, prov) {
-            (true, Provider::Codex) => (color::TAB_CODEX, color::TAB_CODEX_EDGE),
-            (true, Provider::Cursor) => (color::TAB_CURSOR, color::TAB_CURSOR_EDGE),
             (true, _) => (color::TAB_CLAUDE, color::TAB_CLAUDE_EDGE),
             (false, _) => (color::WASH, if resp.hovered() { color::CONTROL_HOVER.gamma_multiply(0.7) } else { color::TAB_EDGE }),
         };
